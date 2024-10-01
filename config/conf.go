@@ -173,9 +173,9 @@ func init() {
 		}
 	}
 	if len(confFilePath) == 0 {
-		system.Logger.Fatal("System root directory setting error.")
+		log.Fatal("System root directory setting error.")
 	}
-	system.Logger.Info("current config file ", confFilePath)
+	log.Println("current config file ", confFilePath)
 
 	viper.SetConfigFile(confFilePath)
 
