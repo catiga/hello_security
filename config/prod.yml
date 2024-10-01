@@ -1,0 +1,42 @@
+chain:
+  - name: SOLANA
+    wsRpc: wss://solana-mainnet.core.chainstack.com/c0260deb07f06fce4403c9a4033adafa
+    queryRpc:
+      - https://solana-mainnet.core.chainstack.com/c0260deb07f06fce4403c9a4033adafa
+    slotParallel: 1
+    txDetal: 200
+    rangeRound: 200
+  - name: ETH
+    wsRpc: wss://mainnet.infura.io/ws/v3/your-infura-project-id
+    queryRpc:
+      - https://mainnet.infura.io/v3/
+    slotParallel: 1
+    txDetal: 200
+    rangeRound: 200
+
+database:
+  type: mysql
+  host: database-1.c7qa0eoy0d58.ap-northeast-1.rds.amazonaws.com
+  port: 3306
+  user: admin
+  password: |qD|R:l?(Zub3KHA0HkE!it2McZd
+  dbname: hello_sec
+  sslmode: disable
+  TimeZone: Asia/Shanghai
+
+redis:
+  host: 8.210.233.33
+  port: 22225
+  password: lasmx151asxaXA156
+  db: 1
+
+log:
+  path: /app/hellosec
+cmd:
+  port: 9501
+  host: localhost
+
+http:
+  port: 18080
+
+allStart: 1
