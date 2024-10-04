@@ -28,9 +28,14 @@ type WalletObj struct {
 const (
 	ETH    ChainCode = "ETH"
 	SOLANA ChainCode = "SOLANA"
+	BSC    ChainCode = "BSC"
+	BASE   ChainCode = "BASE"
+	OP     ChainCode = "OP"
+	ARB    ChainCode = "ARB"
+	XLAYER ChainCode = "XLAYER"
 )
 
-var suppChains []ChainCode = []ChainCode{ETH, SOLANA}
+var suppChains []ChainCode = []ChainCode{ETH, SOLANA, BSC, BASE, OP, ARB, XLAYER}
 
 func isSupp(cc ChainCode) (bool, bool) {
 	for _, v := range suppChains {
