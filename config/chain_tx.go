@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -244,7 +245,7 @@ func (t ChainConfig) HandlTransfer(to, mint string, amount *big.Int, wg *model.W
 			}
 			log.Info(acs)
 
-			outHash, _ := client.GetLatestBlockhash(context.Background(), rpc.CommitmentConfirmed)
+			outHash, _ := client.GetLatestBlockhash(context.Background(), rpc.CommitmentProcessed)
 			transaction.Message.RecentBlockhash = outHash.Value.Blockhash
 
 			messageHash, _ := transaction.Message.MarshalBinary()
@@ -255,16 +256,51 @@ func (t ChainConfig) HandlTransfer(to, mint string, amount *big.Int, wg *model.W
 			}
 			transaction.Signatures = []solana.Signature{solana.Signature(sig)}
 
+			simuTx, err := client.SimulateTransaction(context.Background(), &transaction)
+			log.Info("simulate transaction: ", simuTx, err)
+			if err != nil {
+				for retries := 0; retries < 5; retries++ {
+					outHash, err := client.GetLatestBlockhash(context.Background(), rpc.CommitmentProcessed)
+					if err != nil {
+						log.Errorf("Failed to get latest blockhash: %v", err)
+						return "", err
+					}
+					log.Infof("transaction retrying for : %d", retries)
+					transaction.Message.RecentBlockhash = outHash.Value.Blockhash
+
+					messageHash, _ := transaction.Message.MarshalBinary()
+					sig, err := enc.Porter().SigSol(wg.EncryptPK, messageHash)
+					if err != nil {
+						return txhash, err
+					}
+					transaction.Signatures = []solana.Signature{solana.Signature(sig)}
+
+					// 进行交易模拟
+					simuTx, err := client.SimulateTransaction(context.Background(), &transaction)
+					log.Info("simulate transaction: ", simuTx, err)
+
+					// 如果模拟成功（err == nil），则退出重试循环
+					if err == nil {
+						break
+					}
+
+					if retries == 5-1 {
+						log.Errorf("Transaction simulation failed after %d attempts: %v", 5, err)
+						return txhash, err
+					}
+
+					time.Sleep(500 * time.Millisecond)
+				}
+			}
+
 			txhash, err := client.SendTransaction(context.Background(), &transaction)
 			if err != nil {
 				return "", err
 			}
 
-			simuTx, err := client.SimulateTransaction(context.Background(), &transaction)
-			log.Info(simuTx, err)
 			txbytes, _ := transaction.MarshalBinary()
 			base64tx := base64.StdEncoding.EncodeToString(txbytes)
-			log.Info(base64tx)
+			log.Info("transaction data:", base64tx)
 
 			return txhash.String(), err
 		}
