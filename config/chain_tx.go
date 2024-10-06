@@ -244,7 +244,7 @@ func (t ChainConfig) HandlTransfer(to, mint string, amount *big.Int, wg *model.W
 			}
 			log.Info(acs)
 
-			outHash, _ := client.GetLatestBlockhash(context.Background(), rpc.CommitmentFinalized)
+			outHash, _ := client.GetLatestBlockhash(context.Background(), rpc.CommitmentProcessed)
 			transaction.Message.RecentBlockhash = outHash.Value.Blockhash
 
 			messageHash, _ := transaction.Message.MarshalBinary()
