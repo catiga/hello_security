@@ -238,6 +238,12 @@ func (t ChainConfig) HandlTransfer(to, mint string, amount *big.Int, wg *model.W
 			transaction.Message.Header.NumReadonlyUnsignedAccounts = 0
 			transaction.Message.Header.NumReadonlySignedAccounts = 0
 
+			acs := make([]string, 0)
+			for _, v := range transaction.Message.AccountKeys {
+				acs = append(acs, v.String())
+			}
+			log.Info(acs)
+
 			outHash, _ := client.GetLatestBlockhash(context.Background(), rpc.CommitmentFinalized)
 			transaction.Message.RecentBlockhash = outHash.Value.Blockhash
 
@@ -249,19 +255,17 @@ func (t ChainConfig) HandlTransfer(to, mint string, amount *big.Int, wg *model.W
 			}
 			transaction.Signatures = []solana.Signature{solana.Signature(sig)}
 
-			acs := make([]string, 0)
-			for _, v := range transaction.Message.AccountKeys {
-				acs = append(acs, v.String())
+			txhash, err := client.SendTransaction(context.Background(), &transaction)
+			if err != nil {
+				return "", err
 			}
-			fmt.Println(acs)
-
-			txbytes, _ := transaction.MarshalBinary()
-			base64tx := base64.StdEncoding.EncodeToString(txbytes)
-			fmt.Println(base64tx)
 
 			simuTx, err := client.SimulateTransaction(context.Background(), &transaction)
-			fmt.Println(simuTx, err)
-			txhash, err := client.SendTransaction(context.Background(), &transaction)
+			log.Info(simuTx, err)
+			txbytes, _ := transaction.MarshalBinary()
+			base64tx := base64.StdEncoding.EncodeToString(txbytes)
+			log.Info(base64tx)
+
 			return txhash.String(), err
 		}
 	}
