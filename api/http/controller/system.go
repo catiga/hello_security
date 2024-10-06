@@ -42,16 +42,27 @@ func CreateWallet(c *gin.Context) {
 	}
 
 	db := system.GetDb()
-	var wg model.WalletGenerated
-	db.Model(&model.WalletGenerated{}).Where("user_id = ? and chain_code = ? and status = ?", req.UserID, req.ChainCode, "00").First(&wg)
-	if wg.ID > 0 {
+	var wgs []model.WalletGenerated
+	err := db.Model(&model.WalletGenerated{}).Where("user_id = ? and status = ?", req.UserID, "00").Find(&wgs).Error
+
+	var exist *model.WalletGenerated
+	for _, v := range wgs {
+		if v.ChainCode == req.ChainCode {
+			exist = &v
+		}
+	}
+	if exist != nil {
 		res.Code = codes.CODE_ERR_EXIST_OBJ
 		res.Msg = "exist wallet for this chain code"
 		c.JSON(http.StatusBadRequest, res)
 		return
 	}
+	var encmno string
+	if len(wgs) > 0 {
+		encmno = wgs[0].EncryptMem
+	}
 
-	wal, err := wallet.Generate(wallet.ChainCode(req.ChainCode))
+	wal, err := wallet.Generate(encmno, wallet.ChainCode(req.ChainCode))
 	if err != nil {
 		res.Code = codes.CODE_ERR_UNKNOWN
 		res.Msg = err.Error()
@@ -60,7 +71,7 @@ func CreateWallet(c *gin.Context) {
 	}
 
 	channel, _ := c.Get("APP_ID")
-	wg = model.WalletGenerated{
+	wg := model.WalletGenerated{
 		UserID:         req.UserID,
 		ChainCode:      req.ChainCode,
 		Wallet:         wal.Address,

@@ -11,13 +11,13 @@ import (
 type WalletGenerated struct {
 	ID             int64     `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
 	UserID         string    `gorm:"column:user_id" json:"user_id"`
-	Wallet         string    `gorm:"column:wallet;size:100" json:"wallet"`
-	ChainCode      string    `gorm:"column:chain_code;size:100" json:"chain_code"`
-	EncryptPK      string    `gorm:"column:encrypt_pk;size:255" json:"encrypt_pk"`
+	Wallet         string    `gorm:"column:wallet" json:"wallet"`
+	ChainCode      string    `gorm:"column:chain_code" json:"chain_code"`
+	EncryptPK      string    `gorm:"column:encrypt_pk" json:"encrypt_pk"`
 	EncryptMem     string    `gorm:"column:encrypt_mem" json:"encrypt_mem"`
-	EncryptVersion string    `gorm:"column:encrypt_version;size:100" json:"encrypt_version"`
+	EncryptVersion string    `gorm:"column:encrypt_version" json:"encrypt_version"`
 	CreateTime     time.Time `gorm:"column:create_time" json:"create_time"`
-	Channel        string    `gorm:"column:channel;size:100" json:"channel"`
+	Channel        string    `gorm:"column:channel" json:"channel"`
 	CanPort        bool      `gorm:"column:canport" json:"canport"`
 	Status         string    `gorm:"column:status" json:"status"`
 }
@@ -30,13 +30,13 @@ func (WalletGenerated) TableName() string {
 type WalletLog struct {
 	ID        int64     `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
 	WalletID  int64     `gorm:"column:wallet_id" json:"wallet_id"`
-	Wallet    string    `gorm:"column:wallet;size:100" json:"wallet"`
-	Data      string    `gorm:"column:data;size:100" json:"data"`
-	Sig       string    `gorm:"column:sig;size:255" json:"sig"`
-	ChainCode string    `gorm:"column:chain_code;size:100" json:"chain_code"`
-	TxHash    string    `gorm:"column:tx_hash;size:100" json:"tx_hash"`
+	Wallet    string    `gorm:"column:wallet" json:"wallet"`
+	Data      string    `gorm:"column:data" json:"data"`
+	Sig       string    `gorm:"column:sig" json:"sig"`
+	ChainCode string    `gorm:"column:chain_code" json:"chain_code"`
+	TxHash    string    `gorm:"column:tx_hash" json:"tx_hash"`
 	OpTime    time.Time `gorm:"column:op_time" json:"op_time"`
-	Operation string    `gorm:"column:operation;size:100" json:"operation"`
+	Operation string    `gorm:"column:operation" json:"operation"`
 	Err       string    `gorm:"column:error" json:"error"`
 }
 

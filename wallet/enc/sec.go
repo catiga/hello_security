@@ -3,18 +3,24 @@ package enc
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/mr-tron/base58"
+	"github.com/tyler-smith/go-bip39"
 
 	"golang.org/x/crypto/ed25519"
+	"golang.org/x/crypto/pbkdf2"
 )
 
 const (
@@ -185,4 +191,103 @@ func (e *EncPort) SigEvmTx(encryptedPrivKey string, tx *types.Transaction, chain
 	signedTx, err := types.SignTx(tx, types.NewEIP155Signer(chainId), privateKey)
 
 	return signedTx, err
+}
+
+func GenerateEVM(enptMno string) (string, string, string, error) {
+	var pkBytes, mneBytes []byte
+	var address, mnemonic string
+	if len(enptMno) == 0 {
+		entropy, err := bip39.NewEntropy(128)
+		if err != nil {
+			return "", "", "", err
+		}
+		mnemonic, err = bip39.NewMnemonic(entropy)
+		if err != nil {
+			return "", "", "", err
+		}
+
+	} else {
+		encryptedPrivKeyBytes, _ := base64.StdEncoding.DecodeString(enptMno)
+		nonce := encryptedPrivKeyBytes[:12]
+		ciphertext := encryptedPrivKeyBytes[12:]
+
+		decryptMno, err := Porter().decrypt(ciphertext, nonce)
+		if err != nil {
+			return "", "", "", err
+		}
+		mnemonic = string(decryptMno)
+	}
+	seed := bip39.NewSeed(mnemonic, "")
+	privateKey, err := crypto.ToECDSA(pbkdf2.Key(seed, []byte("ethereum"), 2048, 32, sha256.New))
+	if err != nil {
+		return "", "", "", err
+	}
+	privateKeyBytes := crypto.FromECDSA(privateKey)
+
+	privateKeyStr := common.Bytes2Hex(privateKeyBytes)
+	publicKey := privateKey.Public()
+	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
+	if !ok {
+		return "", "", "", errors.New("error casting public key to ECDSA")
+	}
+	publicKeyBytes := crypto.FromECDSAPub(publicKeyECDSA)
+	fmt.Println("Public Key:", common.Bytes2Hex(publicKeyBytes))
+
+	address = crypto.PubkeyToAddress(*publicKeyECDSA).Hex()
+
+	mneBytes, err = Porter().Encrypt([]byte(mnemonic))
+	if err != nil {
+		return "", "", "", err
+	}
+	pkBytes, _ = Porter().Encrypt([]byte(privateKeyStr))
+
+	return address, base64.StdEncoding.EncodeToString(mneBytes), base64.StdEncoding.EncodeToString(pkBytes), nil
+}
+
+func GenerateSolana(enptMno string) (string, string, string, error) {
+	var pkBytes, mneBytes []byte
+	var address, mnemonic string
+	if len(enptMno) == 0 {
+		entropy, err := bip39.NewEntropy(128)
+		if err != nil {
+			return "", "", "", err
+		}
+		mnemonic, err = bip39.NewMnemonic(entropy)
+		if err != nil {
+			return "", "", "", err
+		}
+
+	} else {
+		encryptedPrivKeyBytes, _ := base64.StdEncoding.DecodeString(enptMno)
+		nonce := encryptedPrivKeyBytes[:12]
+		ciphertext := encryptedPrivKeyBytes[12:]
+
+		decryptMno, err := Porter().decrypt(ciphertext, nonce)
+		if err != nil {
+			return "", "", "", err
+		}
+		mnemonic = string(decryptMno)
+	}
+
+	seed := bip39.NewSeed(mnemonic, "")
+
+	privateKeySeed := pbkdf2.Key(seed, []byte("ed25519 seed"), 2048, ed25519.SeedSize, sha256.New)
+
+	privateKey := ed25519.NewKeyFromSeed(privateKeySeed)
+
+	publicKey := privateKey.Public().(ed25519.PublicKey)
+
+	address = base58.Encode(publicKey)
+
+	mneBytes, err := Porter().Encrypt([]byte(mnemonic))
+	if err != nil {
+		return "", "", "", err
+	}
+
+	pkBytes, err = Porter().Encrypt([]byte(base64.StdEncoding.EncodeToString(privateKey)))
+	if err != nil {
+		return "", "", "", err
+	}
+
+	return address, base64.StdEncoding.EncodeToString(mneBytes), base64.StdEncoding.EncodeToString(pkBytes), nil
 }

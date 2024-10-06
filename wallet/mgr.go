@@ -66,18 +66,19 @@ func (t *WalletObj) GetPk() string {
 	return t.pk
 }
 
-func Generate(chainCode ChainCode) (*WalletObj, error) {
+func Generate(wg string, chainCode ChainCode) (*WalletObj, error) {
 	if supp, evm := isSupp(chainCode); supp {
 		var addr, mem, pk string
 		var err error
 		if evm {
-			addr, mem, pk, err = generateEVM()
+			// addr, mem, pk, err = generateEVM()
+			addr, mem, pk, err = enc.GenerateEVM(wg)
 			if err != nil {
 				return nil, err
 			}
 		} else {
 			if chainCode == SOLANA {
-				addr, mem, pk, err = generateSolana()
+				addr, mem, pk, err = enc.GenerateSolana(wg)
 				if err != nil {
 					return nil, err
 				}
@@ -86,14 +87,6 @@ func Generate(chainCode ChainCode) (*WalletObj, error) {
 		if len(addr) == 0 {
 			return nil, errors.New("unknown error for creating wallet")
 		}
-		return New(addr, mem, pk), nil
-	}
-	if chainCode == ETH {
-		addr, mem, pk, err := generateEVM()
-		if err != nil {
-			return nil, err
-		}
-
 		return New(addr, mem, pk), nil
 	}
 	return nil, errors.New("unsupport chain")
