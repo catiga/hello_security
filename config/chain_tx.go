@@ -13,6 +13,7 @@ import (
 	bin "github.com/gagliardetto/binary"
 	"github.com/gagliardetto/solana-go"
 	associatedtokenaccount "github.com/gagliardetto/solana-go/programs/associated-token-account"
+	"github.com/gagliardetto/solana-go/programs/system"
 	"github.com/gagliardetto/solana-go/programs/token"
 	"github.com/gagliardetto/solana-go/rpc"
 	"github.com/hellodex/HelloSecurity/log"
@@ -104,115 +105,165 @@ func (t ChainConfig) HandlTransfer(to, mint string, amount *big.Int, wg *model.W
 		client := rpc.New(t.GetRpc()[0])
 		fromAddr := solana.MustPublicKeyFromBase58(wg.Wallet)
 		toAddr := solana.MustPublicKeyFromBase58(to)
-		fromAccount, _, _ := solana.FindAssociatedTokenAddress(fromAddr, solana.MustPublicKeyFromBase58(mint))
-		toAccount, _, _ := solana.FindAssociatedTokenAddress(toAddr, solana.MustPublicKeyFromBase58(mint))
-
-		transaction := solana.Transaction{
-			Message: solana.Message{
-				// 需要初始化头部信息
-				Header: solana.MessageHeader{
-					NumRequiredSignatures:       0, // 这稍后将更新
-					NumReadonlyUnsignedAccounts: 0,
-					NumReadonlySignedAccounts:   0,
+		if mint == "" || mint == "SOL" {
+			// SOL 主网币转账
+			transaction := solana.Transaction{
+				Message: solana.Message{
+					Header: solana.MessageHeader{
+						NumRequiredSignatures:       1,
+						NumReadonlyUnsignedAccounts: 0,
+						NumReadonlySignedAccounts:   0,
+					},
+					RecentBlockhash: solana.Hash{}, // 稍后将更新
 				},
-				RecentBlockhash: solana.Hash{}, // 这稍后将更新
-			},
-		}
+			}
 
-		transaction.Message.AccountKeys = append(transaction.Message.AccountKeys,
-			fromAddr, // 支付账户
-			fromAccount,
-			toAccount,                            // 要创建的 Token Account
-			toAddr,                               // Token Account 所有者
-			solana.MustPublicKeyFromBase58(mint), // Mint 地址
-			solana.MustPublicKeyFromBase58("11111111111111111111111111111111"),            // 系统程序账户
-			solana.MustPublicKeyFromBase58("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"), // 关联 Token 程序
-		)
-		toAccountInfo, _ := client.GetAccountInfo(context.Background(), toAccount)
+			transaction.Message.AccountKeys = append(transaction.Message.AccountKeys, fromAddr, toAddr)
 
-		if toAccountInfo != nil {
-			ownaddr := toAccountInfo.Value.Owner.String()
-			fmt.Println(ownaddr)
-		}
-
-		if toAccountInfo == nil {
-			transaction.Message.AccountKeys = append(
-				transaction.Message.AccountKeys,
-				solana.MustPublicKeyFromBase58("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"),
-			)
-			createATAInstruction := associatedtokenaccount.NewCreateInstruction(
-				transaction.Message.AccountKeys[0],
+			// SOL 转账指令
+			transferInstruction := system.NewTransferInstruction(
+				amount.Uint64(),
+				fromAddr,
 				toAddr,
-				solana.MustPublicKeyFromBase58(mint),
 			)
-			data := createATAInstruction.Build()
+			data := transferInstruction.Build()
 			dData, _ := data.Data()
-
-			compiledCreateAccountInstruction := solana.CompiledInstruction{
-				ProgramIDIndex: uint16(7), // 假设 ATA 程序的索引为0
-				// Accounts:       []int{0, (tokenAccountKeyIndex)}, // 使用创建指令的账户
+			compiledTransferInstruction := solana.CompiledInstruction{
+				ProgramIDIndex: uint16(6), // 系统程序在 AccountKeys 中的索引，假设它是第6个
 				Accounts: []uint16{
-					0,
+					0, // fromAddr 的索引
+					1, // toAddr 的索引
+				},
+				Data: dData, // 编译指令的数据
+			}
+			transaction.Message.Instructions = append(transaction.Message.Instructions, compiledTransferInstruction)
+
+			outHash, _ := client.GetLatestBlockhash(context.Background(), rpc.CommitmentFinalized)
+			transaction.Message.RecentBlockhash = outHash.Value.Blockhash
+
+			messageHash, _ := transaction.Message.MarshalBinary()
+			sig, err := enc.Porter().SigSol(wg.EncryptPK, messageHash)
+			if err != nil {
+				return txhash, err
+			}
+			transaction.Signatures = []solana.Signature{solana.Signature(sig)}
+
+			txbytes, _ := transaction.MarshalBinary()
+			fmt.Println(base64.StdEncoding.EncodeToString(txbytes))
+
+			txhash, err := client.SendTransaction(context.Background(), &transaction)
+			return txhash.String(), err
+		} else {
+			fromAccount, _, _ := solana.FindAssociatedTokenAddress(fromAddr, solana.MustPublicKeyFromBase58(mint))
+			toAccount, _, _ := solana.FindAssociatedTokenAddress(toAddr, solana.MustPublicKeyFromBase58(mint))
+
+			transaction := solana.Transaction{
+				Message: solana.Message{
+					// 需要初始化头部信息
+					Header: solana.MessageHeader{
+						NumRequiredSignatures:       0, // 这稍后将更新
+						NumReadonlyUnsignedAccounts: 0,
+						NumReadonlySignedAccounts:   0,
+					},
+					RecentBlockhash: solana.Hash{}, // 这稍后将更新
+				},
+			}
+
+			transaction.Message.AccountKeys = append(transaction.Message.AccountKeys,
+				fromAddr, // 支付账户
+				fromAccount,
+				toAccount,                            // 要创建的 Token Account
+				toAddr,                               // Token Account 所有者
+				solana.MustPublicKeyFromBase58(mint), // Mint 地址
+				solana.MustPublicKeyFromBase58("11111111111111111111111111111111"),            // 系统程序账户
+				solana.MustPublicKeyFromBase58("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"), // 关联 Token 程序
+			)
+			toAccountInfo, _ := client.GetAccountInfo(context.Background(), toAccount)
+
+			if toAccountInfo != nil {
+				ownaddr := toAccountInfo.Value.Owner.String()
+				fmt.Println(ownaddr)
+			}
+
+			if toAccountInfo == nil {
+				transaction.Message.AccountKeys = append(
+					transaction.Message.AccountKeys,
+					solana.MustPublicKeyFromBase58("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"),
+				)
+				createATAInstruction := associatedtokenaccount.NewCreateInstruction(
+					transaction.Message.AccountKeys[0],
+					toAddr,
+					solana.MustPublicKeyFromBase58(mint),
+				)
+				data := createATAInstruction.Build()
+				dData, _ := data.Data()
+
+				compiledCreateAccountInstruction := solana.CompiledInstruction{
+					ProgramIDIndex: uint16(7), // 假设 ATA 程序的索引为0
+					// Accounts:       []int{0, (tokenAccountKeyIndex)}, // 使用创建指令的账户
+					Accounts: []uint16{
+						0,
+						2,
+						3,
+						4,
+						5,
+						6,
+					},
+					Data: dData, // 编译的数据
+				}
+				transaction.Message.Instructions = append(transaction.Message.Instructions, compiledCreateAccountInstruction)
+			}
+
+			transferInstruction := token.NewTransferInstruction(
+				amount.Uint64(),
+				fromAccount,
+				toAccount,
+				fromAddr,
+				nil,
+			)
+			data := transferInstruction.Build()
+			dData, _ := data.Data()
+			compiledTransferInstruction := solana.CompiledInstruction{
+				ProgramIDIndex: uint16(6),
+				Accounts: []uint16{
+					1,
 					2,
-					3,
-					4,
-					5,
-					6,
+					0,
 				},
 				Data: dData, // 编译的数据
 			}
-			transaction.Message.Instructions = append(transaction.Message.Instructions, compiledCreateAccountInstruction)
+			transaction.Message.Instructions = append(transaction.Message.Instructions, compiledTransferInstruction)
+
+			transaction.Message.Header.NumRequiredSignatures = 1
+			transaction.Message.Header.NumReadonlyUnsignedAccounts = 0
+			transaction.Message.Header.NumReadonlySignedAccounts = 0
+
+			outHash, _ := client.GetLatestBlockhash(context.Background(), rpc.CommitmentFinalized)
+			transaction.Message.RecentBlockhash = outHash.Value.Blockhash
+
+			messageHash, _ := transaction.Message.MarshalBinary()
+
+			sig, err := enc.Porter().SigSol(wg.EncryptPK, messageHash)
+			if err != nil {
+				return txhash, err
+			}
+			transaction.Signatures = []solana.Signature{solana.Signature(sig)}
+
+			acs := make([]string, 0)
+			for _, v := range transaction.Message.AccountKeys {
+				acs = append(acs, v.String())
+			}
+			fmt.Println(acs)
+
+			txbytes, _ := transaction.MarshalBinary()
+			base64tx := base64.StdEncoding.EncodeToString(txbytes)
+			fmt.Println(base64tx)
+
+			simuTx, err := client.SimulateTransaction(context.Background(), &transaction)
+			fmt.Println(simuTx, err)
+			txhash, err := client.SendTransaction(context.Background(), &transaction)
+			return txhash.String(), err
 		}
-
-		transferInstruction := token.NewTransferInstruction(
-			amount.Uint64(),
-			fromAccount,
-			toAccount,
-			fromAddr,
-			nil,
-		)
-		data := transferInstruction.Build()
-		dData, _ := data.Data()
-		compiledTransferInstruction := solana.CompiledInstruction{
-			ProgramIDIndex: uint16(6),
-			Accounts: []uint16{
-				1,
-				2,
-				0,
-			},
-			Data: dData, // 编译的数据
-		}
-		transaction.Message.Instructions = append(transaction.Message.Instructions, compiledTransferInstruction)
-
-		transaction.Message.Header.NumRequiredSignatures = 1
-		transaction.Message.Header.NumReadonlyUnsignedAccounts = 0
-		transaction.Message.Header.NumReadonlySignedAccounts = 0
-
-		outHash, _ := client.GetLatestBlockhash(context.Background(), rpc.CommitmentFinalized)
-		transaction.Message.RecentBlockhash = outHash.Value.Blockhash
-
-		messageHash, _ := transaction.Message.MarshalBinary()
-
-		sig, err := enc.Porter().SigSol(wg.EncryptPK, messageHash)
-		if err != nil {
-			return txhash, err
-		}
-		transaction.Signatures = []solana.Signature{solana.Signature(sig)}
-
-		acs := make([]string, 0)
-		for _, v := range transaction.Message.AccountKeys {
-			acs = append(acs, v.String())
-		}
-		fmt.Println(acs)
-
-		txbytes, _ := transaction.MarshalBinary()
-		base64tx := base64.StdEncoding.EncodeToString(txbytes)
-		fmt.Println(base64tx)
-
-		simuTx, err := client.SimulateTransaction(context.Background(), &transaction)
-		fmt.Println(simuTx, err)
-		txhash, err := client.SendTransaction(context.Background(), &transaction)
-		return txhash.String(), err
 	}
 	return txhash, errors.New("unsupport chain")
 
