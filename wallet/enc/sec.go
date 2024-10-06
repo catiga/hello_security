@@ -45,9 +45,9 @@ func init() {
 		e = &EncPort{
 			Method: method,
 		}
-		// seed := defaultSeed
-		// key := sha256.Sum256([]byte(seed))
-		// e.aesKey = key[:]
+		seed := defaultSeed
+		key := sha256.Sum256([]byte(seed))
+		e.aesKey = key[:]
 	}
 }
 
@@ -158,7 +158,9 @@ func (e *EncPort) SigSol(encryptedPrivKey string, content []byte) ([]byte, error
 		return nil, err
 	}
 
-	privKey := ed25519.PrivateKey(decryptedPrivKeyBytes)
+	realPk, _ := base64.StdEncoding.DecodeString(string(decryptedPrivKeyBytes))
+
+	privKey := ed25519.PrivateKey(realPk)
 
 	sig := ed25519.Sign(privKey, content)
 

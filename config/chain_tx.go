@@ -118,7 +118,7 @@ func (t ChainConfig) HandlTransfer(to, mint string, amount *big.Int, wg *model.W
 				},
 			}
 
-			transaction.Message.AccountKeys = append(transaction.Message.AccountKeys, fromAddr, toAddr)
+			transaction.Message.AccountKeys = append(transaction.Message.AccountKeys, fromAddr, toAddr, solana.MustPublicKeyFromBase58("11111111111111111111111111111111"))
 
 			// SOL 转账指令
 			transferInstruction := system.NewTransferInstruction(
@@ -129,7 +129,7 @@ func (t ChainConfig) HandlTransfer(to, mint string, amount *big.Int, wg *model.W
 			data := transferInstruction.Build()
 			dData, _ := data.Data()
 			compiledTransferInstruction := solana.CompiledInstruction{
-				ProgramIDIndex: uint16(6), // 系统程序在 AccountKeys 中的索引，假设它是第6个
+				ProgramIDIndex: uint16(2), // 系统程序在 AccountKeys 中的索引，假设它是第6个
 				Accounts: []uint16{
 					0, // fromAddr 的索引
 					1, // toAddr 的索引
