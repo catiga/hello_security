@@ -13,6 +13,7 @@ import (
 	"github.com/hellodex/HelloSecurity/model"
 	"github.com/hellodex/HelloSecurity/system"
 	"github.com/hellodex/HelloSecurity/wallet"
+	"github.com/hellodex/HelloSecurity/wallet/enc"
 
 	"github.com/gin-gonic/gin"
 )
@@ -20,6 +21,8 @@ import (
 type CreateWalletRequest struct {
 	UserID    string `json:"user_id"`
 	ChainCode string `json:"chain_code"`
+	GroupID   int    `json:"group_id"`
+	Nop       string `json:"nop"`
 }
 
 type SigWalletRequest struct {
@@ -42,8 +45,51 @@ func CreateWallet(c *gin.Context) {
 	}
 
 	db := system.GetDb()
+	var walletGroup *model.WalletGroup
+	var walletGroups []model.WalletGroup
+	err := db.Model(&model.WalletGroup{}).Where("user_id = ?", req.UserID).Find(&walletGroups).Error
+
+	if req.GroupID > 0 {
+		for _, v := range walletGroups {
+			if v.ID == uint64(req.GroupID) {
+				walletGroup = &v
+			}
+		}
+		if err != nil {
+			res.Code = codes.CODE_ERR_UNKNOWN
+			res.Msg = err.Error()
+			c.JSON(http.StatusBadRequest, res)
+			return
+		}
+		if walletGroup == nil {
+			res.Code = codes.CODES_ERR_OBJ_NOT_FOUND
+			res.Msg = fmt.Sprintf("can not find by group id:%d", req.GroupID)
+			c.JSON(http.StatusBadRequest, res)
+			return
+		}
+	} else {
+		if req.Nop == "Y" || len(walletGroups) == 0 {
+			strmneno, err := enc.NewKeyStories()
+			if err != nil {
+				res.Code = codes.CODE_ERR_UNKNOWN
+				res.Msg = fmt.Sprintf("can not create wallet group : %s", err.Error())
+				c.JSON(http.StatusBadRequest, res)
+				return
+			}
+			walletGroup = &model.WalletGroup{
+				UserID:         req.UserID,
+				CreateTime:     time.Now(),
+				EncryptMem:     strmneno,
+				EncryptVersion: fmt.Sprintf("AES:%d", 1),
+			}
+			db.Save(walletGroup)
+		} else {
+			walletGroup = &walletGroups[0]
+		}
+	}
+
 	var wgs []model.WalletGenerated
-	err := db.Model(&model.WalletGenerated{}).Where("user_id = ? and status = ?", req.UserID, "00").Find(&wgs).Error
+	db.Model(&model.WalletGenerated{}).Where("user_id = ? and group_id = ? and status = ?", req.UserID, walletGroup.ID, "00").Find(&wgs)
 
 	var exist *model.WalletGenerated
 	for _, v := range wgs {
@@ -57,10 +103,7 @@ func CreateWallet(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, res)
 		return
 	}
-	var encmno string
-	if len(wgs) > 0 {
-		encmno = wgs[0].EncryptMem
-	}
+	var encmno string = walletGroup.EncryptMem
 
 	wal, err := wallet.Generate(encmno, wallet.ChainCode(req.ChainCode))
 	if err != nil {
@@ -76,12 +119,12 @@ func CreateWallet(c *gin.Context) {
 		ChainCode:      req.ChainCode,
 		Wallet:         wal.Address,
 		EncryptPK:      wal.GetPk(),
-		EncryptMem:     wal.GetMem(),
 		EncryptVersion: wal.Epm,
 		CreateTime:     time.Now(),
 		Channel:        fmt.Sprintf("%v", channel),
 		CanPort:        false,
 		Status:         "00",
+		GroupID:        walletGroup.ID,
 	}
 
 	err = db.Model(&model.WalletGenerated{}).Save(&wg).Error
@@ -94,9 +137,11 @@ func CreateWallet(c *gin.Context) {
 	res.Data = struct {
 		WalletAddr string `json:"wallet_addr"`
 		WalletId   uint64 `json:"wallet_id"`
+		GroupID    uint64 `json:"group_id"`
 	}{
 		WalletAddr: wg.Wallet,
-		WalletId:   uint64(wg.ID),
+		WalletId:   wg.ID,
+		GroupID:    walletGroup.ID,
 	}
 
 	c.JSON(http.StatusOK, res)

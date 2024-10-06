@@ -9,17 +9,17 @@ import (
 )
 
 type WalletGenerated struct {
-	ID             int64     `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
+	ID             uint64    `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
 	UserID         string    `gorm:"column:user_id" json:"user_id"`
 	Wallet         string    `gorm:"column:wallet" json:"wallet"`
 	ChainCode      string    `gorm:"column:chain_code" json:"chain_code"`
 	EncryptPK      string    `gorm:"column:encrypt_pk" json:"encrypt_pk"`
-	EncryptMem     string    `gorm:"column:encrypt_mem" json:"encrypt_mem"`
 	EncryptVersion string    `gorm:"column:encrypt_version" json:"encrypt_version"`
 	CreateTime     time.Time `gorm:"column:create_time" json:"create_time"`
 	Channel        string    `gorm:"column:channel" json:"channel"`
 	CanPort        bool      `gorm:"column:canport" json:"canport"`
 	Status         string    `gorm:"column:status" json:"status"`
+	GroupID        uint64    `gorm:"column:group_id" json:"group_id"`
 }
 
 // TableName sets the insert table name for this struct type
@@ -27,8 +27,20 @@ func (WalletGenerated) TableName() string {
 	return "wallet_generated"
 }
 
+type WalletGroup struct {
+	ID             uint64    `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
+	UserID         string    `gorm:"column:user_id" json:"user_id"`
+	CreateTime     time.Time `gorm:"column:create_time" json:"create_time"`
+	EncryptMem     string    `gorm:"column:encrypt_mem" json:"encrypt_mem"`
+	EncryptVersion string    `gorm:"column:encrypt_version" json:"encrypt_version"`
+}
+
+func (WalletGroup) TableName() string {
+	return "wallet_group"
+}
+
 type WalletLog struct {
-	ID        int64     `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
+	ID        uint64    `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
 	WalletID  int64     `gorm:"column:wallet_id" json:"wallet_id"`
 	Wallet    string    `gorm:"column:wallet" json:"wallet"`
 	Data      string    `gorm:"column:data" json:"data"`
@@ -45,7 +57,7 @@ func (WalletLog) TableName() string {
 }
 
 type SysChannel struct {
-	ID         int64     `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
+	ID         uint64    `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
 	AppID      string    `gorm:"column:app_id" json:"app_id"`
 	AppKey     string    `gorm:"column:app_key;size:100" json:"app_key"`
 	Status     string    `gorm:"column:status" json:"status"`

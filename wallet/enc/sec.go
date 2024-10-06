@@ -19,6 +19,7 @@ import (
 	"github.com/mr-tron/base58"
 	"github.com/tyler-smith/go-bip39"
 
+	log "github.com/hellodex/HelloSecurity/log"
 	"golang.org/x/crypto/ed25519"
 	"golang.org/x/crypto/pbkdf2"
 )
@@ -191,6 +192,26 @@ func (e *EncPort) SigEvmTx(encryptedPrivKey string, tx *types.Transaction, chain
 	signedTx, err := types.SignTx(tx, types.NewEIP155Signer(chainId), privateKey)
 
 	return signedTx, err
+}
+
+func NewKeyStories() (string, error) {
+	var mnemonic string
+	entropy, err := bip39.NewEntropy(128)
+	if err != nil {
+		log.Error("NewKeyStories error :", err)
+		return "", err
+	}
+	mnemonic, err = bip39.NewMnemonic(entropy)
+	if err != nil {
+		log.Error("NewKeyStories error :", err)
+		return "", err
+	}
+	mbytes, err := Porter().Encrypt([]byte(mnemonic))
+	if err != nil {
+		log.Error("NewKeyStories error :", err)
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(mbytes), nil
 }
 
 func GenerateEVM(enptMno string) (string, string, string, error) {

@@ -67,6 +67,9 @@ func (t *WalletObj) GetPk() string {
 }
 
 func Generate(wg string, chainCode ChainCode) (*WalletObj, error) {
+	if len(wg) == 0 {
+		return nil, errors.New("empty mnenomic")
+	}
 	if supp, evm := isSupp(chainCode); supp {
 		var addr, mem, pk string
 		var err error
