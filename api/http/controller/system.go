@@ -81,6 +81,7 @@ func CreateWallet(c *gin.Context) {
 				CreateTime:     time.Now(),
 				EncryptMem:     strmneno,
 				EncryptVersion: fmt.Sprintf("AES:%d", 1),
+				Nonce:          int(enc.Porter().GetNonce()),
 			}
 			db.Save(walletGroup)
 		} else {
@@ -103,9 +104,9 @@ func CreateWallet(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, res)
 		return
 	}
-	var encmno string = walletGroup.EncryptMem
+	// var encmno string = walletGroup.EncryptMem
 
-	wal, err := wallet.Generate(encmno, wallet.ChainCode(req.ChainCode))
+	wal, err := wallet.Generate(walletGroup, wallet.ChainCode(req.ChainCode))
 	if err != nil {
 		res.Code = codes.CODE_ERR_UNKNOWN
 		res.Msg = err.Error()
@@ -125,6 +126,7 @@ func CreateWallet(c *gin.Context) {
 		CanPort:        false,
 		Status:         "00",
 		GroupID:        walletGroup.ID,
+		Nonce:          walletGroup.Nonce,
 	}
 
 	err = db.Model(&model.WalletGenerated{}).Save(&wg).Error

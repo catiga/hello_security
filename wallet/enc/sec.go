@@ -20,6 +20,7 @@ import (
 	"github.com/tyler-smith/go-bip39"
 
 	log "github.com/hellodex/HelloSecurity/log"
+	"github.com/hellodex/HelloSecurity/model"
 	"golang.org/x/crypto/ed25519"
 	"golang.org/x/crypto/pbkdf2"
 )
@@ -32,6 +33,7 @@ const (
 type EncPort struct {
 	aesKey []byte
 	Method string
+	nonce  uint
 }
 
 var e *EncPort
@@ -45,9 +47,9 @@ func init() {
 		e = &EncPort{
 			Method: method,
 		}
-		seed := defaultSeed
-		key := sha256.Sum256([]byte(seed))
-		e.aesKey = key[:]
+		// seed := defaultSeed
+		// key := sha256.Sum256([]byte(seed))
+		// e.aesKey = key[:]
 	}
 }
 
@@ -56,10 +58,30 @@ func Porter() *EncPort {
 }
 
 func (e *EncPort) SetAESKey(seed string) error {
+	if len(e.aesKey) > 0 {
+		return errors.New("can not reset keys")
+	}
 	aesKeyBytes := sha256.Sum256([]byte(seed))
 
 	e.aesKey = aesKeyBytes[:]
+
+	block, err := aes.NewCipher(e.aesKey)
+	if err != nil {
+		return err
+	}
+	aesGCM, err := cipher.NewGCM(block)
+	if err != nil {
+		return err
+	}
+	if aesGCM.NonceSize() == 0 {
+		return errors.New("invalid key set")
+	}
+	e.nonce = uint(aesGCM.NonceSize())
 	return nil
+}
+
+func (e *EncPort) GetNonce() uint {
+	return e.nonce
 }
 
 func (e *EncPort) Encrypt(plaintext []byte) ([]byte, error) {
@@ -110,10 +132,12 @@ func (e *EncPort) decrypt(ciphertext, nonce []byte) ([]byte, error) {
 	return plaintext, nil
 }
 
-func (e *EncPort) SigEth(encryptedPrivKey string, content []byte) ([]byte, error) {
+func (e *EncPort) SigEth(wg *model.WalletGenerated, content []byte) ([]byte, error) {
+	encryptedPrivKey := wg.EncryptPK
+	nonceSize := wg.Nonce
 	encryptedPrivKeyBytes, _ := base64.StdEncoding.DecodeString(encryptedPrivKey)
-	nonce := encryptedPrivKeyBytes[:12]
-	ciphertext := encryptedPrivKeyBytes[12:]
+	nonce := encryptedPrivKeyBytes[:nonceSize]
+	ciphertext := encryptedPrivKeyBytes[nonceSize:]
 
 	decryptedPrivKeyBytes, err := e.decrypt(ciphertext, nonce)
 	if err != nil {
@@ -144,14 +168,16 @@ func (e *EncPort) SigEth(encryptedPrivKey string, content []byte) ([]byte, error
 	return sig, nil
 }
 
-func (e *EncPort) SigSol(encryptedPrivKey string, content []byte) ([]byte, error) {
+func (e *EncPort) SigSol(wg *model.WalletGenerated, content []byte) ([]byte, error) {
+	encryptedPrivKey := wg.EncryptPK
+	nonceSize := wg.Nonce
 	encryptedPrivKeyBytes, err := base64.StdEncoding.DecodeString(encryptedPrivKey)
 	if err != nil {
 		return nil, err
 	}
 
-	nonce := encryptedPrivKeyBytes[:12]
-	ciphertext := encryptedPrivKeyBytes[12:]
+	nonce := encryptedPrivKeyBytes[:nonceSize]
+	ciphertext := encryptedPrivKeyBytes[nonceSize:]
 
 	decryptedPrivKeyBytes, err := e.decrypt(ciphertext, nonce)
 	if err != nil {
@@ -167,10 +193,13 @@ func (e *EncPort) SigSol(encryptedPrivKey string, content []byte) ([]byte, error
 	return sig, nil
 }
 
-func (e *EncPort) SigEvmTx(encryptedPrivKey string, tx *types.Transaction, chainId *big.Int) (*types.Transaction, error) {
+func (e *EncPort) SigEvmTx(wg *model.WalletGenerated, tx *types.Transaction, chainId *big.Int) (*types.Transaction, error) {
+	encryptedPrivKey := wg.EncryptPK
+	nonceSize := wg.Nonce
+
 	encryptedPrivKeyBytes, _ := base64.StdEncoding.DecodeString(encryptedPrivKey)
-	nonce := encryptedPrivKeyBytes[:12]
-	ciphertext := encryptedPrivKeyBytes[12:]
+	nonce := encryptedPrivKeyBytes[:nonceSize]
+	ciphertext := encryptedPrivKeyBytes[nonceSize:]
 
 	decryptedPrivKeyBytes, err := e.decrypt(ciphertext, nonce)
 	if err != nil {
@@ -216,10 +245,10 @@ func NewKeyStories() (string, error) {
 	return base64.StdEncoding.EncodeToString(mbytes), nil
 }
 
-func GenerateEVM(enptMno string) (string, string, string, error) {
+func GenerateEVM(wg *model.WalletGroup) (string, string, string, error) {
 	var pkBytes, mneBytes []byte
 	var address, mnemonic string
-	if len(enptMno) == 0 {
+	if wg == nil {
 		entropy, err := bip39.NewEntropy(128)
 		if err != nil {
 			return "", "", "", err
@@ -230,9 +259,9 @@ func GenerateEVM(enptMno string) (string, string, string, error) {
 		}
 
 	} else {
-		encryptedPrivKeyBytes, _ := base64.StdEncoding.DecodeString(enptMno)
-		nonce := encryptedPrivKeyBytes[:12]
-		ciphertext := encryptedPrivKeyBytes[12:]
+		encryptedPrivKeyBytes, _ := base64.StdEncoding.DecodeString(wg.EncryptMem)
+		nonce := encryptedPrivKeyBytes[:wg.Nonce]
+		ciphertext := encryptedPrivKeyBytes[wg.Nonce:]
 
 		decryptMno, err := Porter().decrypt(ciphertext, nonce)
 		if err != nil {
@@ -267,10 +296,10 @@ func GenerateEVM(enptMno string) (string, string, string, error) {
 	return address, base64.StdEncoding.EncodeToString(mneBytes), base64.StdEncoding.EncodeToString(pkBytes), nil
 }
 
-func GenerateSolana(enptMno string) (string, string, string, error) {
+func GenerateSolana(wg *model.WalletGroup) (string, string, string, error) {
 	var pkBytes, mneBytes []byte
 	var address, mnemonic string
-	if len(enptMno) == 0 {
+	if wg == nil {
 		entropy, err := bip39.NewEntropy(128)
 		if err != nil {
 			return "", "", "", err
@@ -281,9 +310,9 @@ func GenerateSolana(enptMno string) (string, string, string, error) {
 		}
 
 	} else {
-		encryptedPrivKeyBytes, _ := base64.StdEncoding.DecodeString(enptMno)
-		nonce := encryptedPrivKeyBytes[:12]
-		ciphertext := encryptedPrivKeyBytes[12:]
+		encryptedPrivKeyBytes, _ := base64.StdEncoding.DecodeString(wg.EncryptMem)
+		nonce := encryptedPrivKeyBytes[:wg.Nonce]
+		ciphertext := encryptedPrivKeyBytes[wg.Nonce:]
 
 		decryptMno, err := Porter().decrypt(ciphertext, nonce)
 		if err != nil {

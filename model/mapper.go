@@ -20,6 +20,7 @@ type WalletGenerated struct {
 	CanPort        bool      `gorm:"column:canport" json:"canport"`
 	Status         string    `gorm:"column:status" json:"status"`
 	GroupID        uint64    `gorm:"column:group_id" json:"group_id"`
+	Nonce          int       `gorm:"column:nonce" json:"nonce"`
 }
 
 // TableName sets the insert table name for this struct type
@@ -33,6 +34,7 @@ type WalletGroup struct {
 	CreateTime     time.Time `gorm:"column:create_time" json:"create_time"`
 	EncryptMem     string    `gorm:"column:encrypt_mem" json:"encrypt_mem"`
 	EncryptVersion string    `gorm:"column:encrypt_version" json:"encrypt_version"`
+	Nonce          int       `gorm:"column:nonce" json:"nonce"`
 }
 
 func (WalletGroup) TableName() string {

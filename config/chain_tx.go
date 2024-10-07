@@ -39,7 +39,7 @@ func (t ChainConfig) HandleMessage(message []byte, to string, typecode string, w
 
 	if wg.ChainCode == "SOLANA" {
 		if typecode == "sign" {
-			sig, err = enc.Porter().SigSol(wg.EncryptPK, message)
+			sig, err = enc.Porter().SigSol(wg, message)
 			if err != nil {
 				log.Error("type=", typecode, err)
 				return txhash, sig, err
@@ -55,7 +55,7 @@ func (t ChainConfig) HandleMessage(message []byte, to string, typecode string, w
 		}
 		tx.Message.RecentBlockhash = hashResult.Value.Blockhash
 
-		sig, err = enc.Porter().SigSol(wg.EncryptPK, message)
+		sig, err = enc.Porter().SigSol(wg, message)
 		if err != nil {
 			return txhash, sig, err
 		}
@@ -65,7 +65,7 @@ func (t ChainConfig) HandleMessage(message []byte, to string, typecode string, w
 		return base58.Encode(txhash[:]), sig, err
 	} else { // for all evm
 		if typecode == "sign" {
-			sig, err = enc.Porter().SigEth(wg.EncryptPK, message)
+			sig, err = enc.Porter().SigEth(wg, message)
 			if err != nil {
 				return txhash, sig, err
 			}
@@ -94,7 +94,7 @@ func (t ChainConfig) HandleMessage(message []byte, to string, typecode string, w
 		}
 
 		// 对交易进行签名
-		signedTx, err := enc.Porter().SigEvmTx(wg.EncryptPK, tx, chainID)
+		signedTx, err := enc.Porter().SigEvmTx(wg, tx, chainID)
 		if err != nil {
 			return txhash, sig, err
 		}
@@ -159,7 +159,7 @@ func (t ChainConfig) HandlTransfer(to, mint string, amount *big.Int, wg *model.W
 			transaction.Message.RecentBlockhash = outHash.Value.Blockhash
 
 			messageHash, _ := transaction.Message.MarshalBinary()
-			sig, err := enc.Porter().SigSol(wg.EncryptPK, messageHash)
+			sig, err := enc.Porter().SigSol(wg, messageHash)
 			if err != nil {
 				return txhash, err
 			}
@@ -297,7 +297,7 @@ func (t ChainConfig) HandlTransfer(to, mint string, amount *big.Int, wg *model.W
 					transaction.Message.RecentBlockhash = outHash
 
 					messageHash, _ := transaction.Message.MarshalBinary()
-					sig, err = enc.Porter().SigSol(wg.EncryptPK, messageHash)
+					sig, err = enc.Porter().SigSol(wg, messageHash)
 					if err != nil {
 						return txhash, err
 					}
@@ -381,7 +381,7 @@ func sendETH(client *ethclient.Client, wg *model.WalletGenerated, toAddress comm
 		return nil, err
 	}
 
-	signedTx, err := enc.GetEP().SigEvmTx(wg.EncryptPK, tx, chainID)
+	signedTx, err := enc.GetEP().SigEvmTx(wg, tx, chainID)
 	//types.SignTx(tx, types.NewEIP155Signer(chainID), privateKey)
 	if err != nil {
 		return nil, err
@@ -426,7 +426,7 @@ func sendERC20(client *ethclient.Client, wg *model.WalletGenerated, toAddress, t
 		return nil, err
 	}
 
-	signedTx, err := enc.GetEP().SigEvmTx(wg.EncryptPK, tx, chainID) //types.SignTx(tx, types.NewEIP155Signer(chainID), privateKey)
+	signedTx, err := enc.GetEP().SigEvmTx(wg, tx, chainID) //types.SignTx(tx, types.NewEIP155Signer(chainID), privateKey)
 	if err != nil {
 		return nil, err
 	}

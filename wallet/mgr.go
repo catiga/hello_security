@@ -10,6 +10,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/hellodex/HelloSecurity/model"
 	"github.com/hellodex/HelloSecurity/wallet/enc"
 	"github.com/mr-tron/base58"
 	"github.com/tyler-smith/go-bip39"
@@ -66,8 +67,8 @@ func (t *WalletObj) GetPk() string {
 	return t.pk
 }
 
-func Generate(wg string, chainCode ChainCode) (*WalletObj, error) {
-	if len(wg) == 0 {
+func Generate(wg *model.WalletGroup, chainCode ChainCode) (*WalletObj, error) {
+	if wg == nil {
 		return nil, errors.New("empty mnenomic")
 	}
 	if supp, evm := IsSupp(chainCode); supp {
