@@ -23,7 +23,7 @@ import (
 	"github.com/mr-tron/base58"
 )
 
-const maxRetries = 5
+const maxRetries = 30
 
 func (t ChainConfig) HandleMessage(message []byte, to string, typecode string, wg *model.WalletGenerated) (txhash string, sig []byte, err error) {
 	if len(t.GetRpc()) == 0 {
