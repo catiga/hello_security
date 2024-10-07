@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"math/big"
+	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -252,35 +253,44 @@ func (t ChainConfig) HandlTransfer(to, mint string, amount *big.Int, wg *model.W
 			}
 			log.Info(acs)
 
+			retryWithSameHash := false
+			var outHash solana.Hash
+			var sig []byte
+
 			for retries := 0; retries < maxRetries; retries++ {
-				outHash, err := client.GetLatestBlockhash(context.Background(), rpc.CommitmentProcessed)
-				if err != nil {
-					log.Errorf("Failed to get latest blockhash: %v", err)
-					continue
-				}
-				// log.Infof("transaction retrying for : %d", retries)
-				transaction.Message.RecentBlockhash = outHash.Value.Blockhash
+				if !retryWithSameHash {
+					outHashResponse, err := client.GetLatestBlockhash(context.Background(), rpc.CommitmentProcessed)
+					if err != nil {
+						log.Errorf("Failed to get latest blockhash: %v", err)
+						continue
+					}
+					outHash = outHashResponse.Value.Blockhash
+					transaction.Message.RecentBlockhash = outHash
 
-				messageHash, _ := transaction.Message.MarshalBinary()
-				sig, err := enc.Porter().SigSol(wg.EncryptPK, messageHash)
-				if err != nil {
-					return txhash, err
+					messageHash, _ := transaction.Message.MarshalBinary()
+					sig, err = enc.Porter().SigSol(wg.EncryptPK, messageHash)
+					if err != nil {
+						return txhash, err
+					}
+					transaction.Signatures = []solana.Signature{solana.Signature(sig)}
 				}
-				transaction.Signatures = []solana.Signature{solana.Signature(sig)}
 
-				// 进行交易模拟
-				// simuTx, err := client.SimulateTransaction(context.Background(), &transaction)
 				txhash, err := client.SendTransaction(context.Background(), &transaction)
 
-				// 如果模拟成功（err == nil），则退出重试循环
 				if err == nil {
-					// break
 					txbytes, _ := transaction.MarshalBinary()
 					base64tx := base64.StdEncoding.EncodeToString(txbytes)
-					log.Infof("transaction data: %s, recentBlockHash: %s", base64tx, outHash.Value.Blockhash.String())
+					log.Infof("transaction data: %s, recentBlockHash: %s", base64tx, outHash.String())
 					return txhash.String(), err
+				}
+
+				if strings.Contains(err.Error(), "blockhash not found") {
+					log.Info("Blockhash not found, retrying with same blockhash and signature...")
+					retryWithSameHash = true
 				} else {
-					log.Errorf("send transaction failed %d: %v", retries, err)
+					// 其他错误，重置 retryWithSameHash 并重新获取 blockhash 和签名
+					log.Errorf("Send transaction failed: %v", err)
+					retryWithSameHash = false
 				}
 
 				if retries == maxRetries-1 {
