@@ -37,7 +37,7 @@ const (
 
 var suppChains []ChainCode = []ChainCode{ETH, SOLANA, BSC, BASE, OP, ARB, XLAYER}
 
-func isSupp(cc ChainCode) (bool, bool) {
+func IsSupp(cc ChainCode) (bool, bool) {
 	for _, v := range suppChains {
 		evm := true
 		if cc == v {
@@ -70,7 +70,7 @@ func Generate(wg string, chainCode ChainCode) (*WalletObj, error) {
 	if len(wg) == 0 {
 		return nil, errors.New("empty mnenomic")
 	}
-	if supp, evm := isSupp(chainCode); supp {
+	if supp, evm := IsSupp(chainCode); supp {
 		var addr, mem, pk string
 		var err error
 		if evm {

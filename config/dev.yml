@@ -9,7 +9,7 @@ chain:
   - name: ETH
     wsRpc: wss://mainnet.infura.io/ws/v3/your-infura-project-id
     queryRpc:
-      - https://mainnet.infura.io/v3/your-infura-project-id
+      - https://rpc.ankr.com/eth
     slotParallel: 1
     txDetal: 200
     rangeRound: 200

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -20,11 +21,16 @@ import (
 	"github.com/gagliardetto/solana-go/rpc"
 	"github.com/hellodex/HelloSecurity/log"
 	"github.com/hellodex/HelloSecurity/model"
+	"github.com/hellodex/HelloSecurity/wallet"
 	"github.com/hellodex/HelloSecurity/wallet/enc"
 	"github.com/mr-tron/base58"
 )
 
 const maxRetries = 30
+
+var transferFnSignature = []byte("transfer(address,uint256)")
+
+const erc20ABI = `[{"constant":false,"inputs":[{"name":"_to","type":"address"},{"name":"_value","type":"uint256"}],"name":"transfer","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"nonpayable","type":"function"}]`
 
 func (t ChainConfig) HandleMessage(message []byte, to string, typecode string, wg *model.WalletGenerated) (txhash string, sig []byte, err error) {
 	if len(t.GetRpc()) == 0 {
@@ -320,13 +326,115 @@ func (t ChainConfig) HandlTransfer(to, mint string, amount *big.Int, wg *model.W
 					log.Errorf("Transaction send failed after %d attempts: %v", 5, err)
 					return "", err
 				}
-
 				time.Sleep(500 * time.Millisecond)
 			}
-
 			return "", err
 		}
-	}
-	return txhash, errors.New("unsupport chain")
+	} else {
+		supp, evm := wallet.IsSupp(wallet.ChainCode(wg.ChainCode))
+		if !supp {
+			return txhash, errors.New("unsupport chain")
+		}
+		if !evm {
+			return txhash, errors.New("unsupport chain")
+		}
 
+		toAddress := common.HexToAddress(to)
+		tokenAddress := common.HexToAddress(mint)
+
+		client, _ := ethclient.Dial(t.GetRpc()[0])
+		if tokenAddress == (common.Address{}) {
+			tx, err := sendETH(client, wg, toAddress, amount)
+			if err != nil {
+				log.Errorf("Failed to send ETH: %v", err)
+				return "", err
+			}
+			return tx.Hash().Hex(), nil
+		} else {
+			tx, err := sendERC20(client, wg, toAddress, tokenAddress, amount)
+			if err != nil {
+				log.Errorf("Failed to send ERC20 token: %v", err)
+				return "", err
+			}
+			return tx.Hash().Hex(), nil
+		}
+	}
+}
+
+func sendETH(client *ethclient.Client, wg *model.WalletGenerated, toAddress common.Address, amount *big.Int) (*types.Transaction, error) {
+	fromAddress := common.HexToAddress(wg.Wallet)
+	nonce, err := client.PendingNonceAt(context.Background(), fromAddress)
+	if err != nil {
+		return nil, err
+	}
+
+	gasLimit := uint64(21000) // 转账ETH的固定Gas限制
+	gasPrice, err := client.SuggestGasPrice(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
+	tx := types.NewTransaction(nonce, toAddress, amount, gasLimit, gasPrice, nil)
+
+	chainID, err := client.NetworkID(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
+	signedTx, err := enc.GetEP().SigEvmTx(wg.EncryptPK, tx, chainID)
+	//types.SignTx(tx, types.NewEIP155Signer(chainID), privateKey)
+	if err != nil {
+		return nil, err
+	}
+
+	err = client.SendTransaction(context.Background(), signedTx)
+	if err != nil {
+		return nil, err
+	}
+
+	return signedTx, nil
+}
+
+func sendERC20(client *ethclient.Client, wg *model.WalletGenerated, toAddress, tokenAddress common.Address, amount *big.Int) (*types.Transaction, error) {
+	fromAddress := common.HexToAddress(wg.Wallet)
+	nonce, err := client.PendingNonceAt(context.Background(), fromAddress)
+	if err != nil {
+		return nil, err
+	}
+
+	parsedABI, err := abi.JSON(strings.NewReader(erc20ABI))
+	if err != nil {
+		return nil, err
+	}
+
+	// 创建ERC20转账的数据
+	data, err := parsedABI.Pack("transfer", toAddress, amount)
+	if err != nil {
+		return nil, err
+	}
+
+	gasLimit := uint64(60000) // ERC20 转账的 Gas 限制，具体值视情况调整
+	gasPrice, err := client.SuggestGasPrice(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
+	tx := types.NewTransaction(nonce, tokenAddress, big.NewInt(0), gasLimit, gasPrice, data)
+
+	chainID, err := client.NetworkID(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
+	signedTx, err := enc.GetEP().SigEvmTx(wg.EncryptPK, tx, chainID) //types.SignTx(tx, types.NewEIP155Signer(chainID), privateKey)
+	if err != nil {
+		return nil, err
+	}
+
+	err = client.SendTransaction(context.Background(), signedTx)
+	if err != nil {
+		return nil, err
+	}
+
+	return signedTx, nil
 }
