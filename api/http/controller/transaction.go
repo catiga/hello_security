@@ -52,12 +52,12 @@ func Transfer(c *gin.Context) {
 		return
 	}
 
-	if wg.ChainCode != "SOLANA" {
-		res.Code = codes.CODE_ERR_METHOD_UNSUPPORT
-		res.Msg = fmt.Sprintf("support solana for now %d", req.WalletID)
-		c.JSON(http.StatusBadRequest, res)
-		return
-	}
+	// if wg.ChainCode != "SOLANA" {
+	// 	res.Code = codes.CODE_ERR_METHOD_UNSUPPORT
+	// 	res.Msg = fmt.Sprintf("support solana for now %d", req.WalletID)
+	// 	c.JSON(http.StatusBadRequest, res)
+	// 	return
+	// }
 
 	chainConfig := config.GetRpcConfig(wg.ChainCode)
 
