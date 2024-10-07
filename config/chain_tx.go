@@ -284,7 +284,7 @@ func (t ChainConfig) HandlTransfer(to, mint string, amount *big.Int, wg *model.W
 					return txhash.String(), err
 				}
 
-				if strings.Contains(err.Error(), "blockhash not found") {
+				if strings.Contains(err.Error(), "Blockhash not found") {
 					log.Info("Blockhash not found, retrying with same blockhash and signature...")
 					retryWithSameHash = true
 				} else {
