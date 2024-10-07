@@ -66,7 +66,7 @@ func Transfer(c *gin.Context) {
 	if err != nil {
 		log.Error("transfer error:", req, err)
 		res.Code = codes.CODE_ERR_UNKNOWN
-		res.Msg = fmt.Sprintf("unknown error %d", req.WalletID)
+		res.Msg = fmt.Sprintf("unknown error %s", err.Error())
 		c.JSON(http.StatusBadRequest, res)
 		return
 	}

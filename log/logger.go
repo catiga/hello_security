@@ -1,8 +1,10 @@
 package log
 
 import (
+	"fmt"
 	"io"
 	"os"
+	"runtime"
 
 	"github.com/sirupsen/logrus"
 )
@@ -16,33 +18,39 @@ type FileHook struct {
 }
 
 func (hook *FileHook) Fire(entry *logrus.Entry) error {
-	line, err := entry.String()
+	// 手动捕获调用者信息
+	if entry.HasCaller() {
+		// 根据调用堆栈深度获取实际调用者信息
+		pc, file, line, ok := runtime.Caller(8) // 调整堆栈深度
+		if ok {
+			funcName := runtime.FuncForPC(pc).Name()
+			entry.Data["file"] = fmt.Sprintf("%s:%d", file, line)
+			entry.Data["func"] = funcName
+		} else {
+			entry.Data["file"] = "unknown"
+			entry.Data["func"] = "unknown"
+		}
+	}
+
+	// 使用自定义格式化器格式化日志输出
+	formatter := &logrus.TextFormatter{
+		FullTimestamp:   true,
+		TimestampFormat: "2006-01-02 15:04:05",
+	}
+
+	// 将格式化后的日志写入文件
+	line, err := formatter.Format(entry)
 	if err != nil {
 		return err
 	}
-	_, err = hook.Writer.Write([]byte(line))
-	//if err != nil {
-	//	fmt.Printf("Error writing log: %v\n", err)
-	//} else {
-	//	fmt.Printf("Successfully wrote log entry: %s\n", line)
-	//}
+
+	_, err = hook.Writer.Write(line)
+	if err != nil {
+		fmt.Printf("Error writing log: %v\n", err)
+	} else {
+		fmt.Printf("Successfully wrote log entry: %s\n", string(line))
+	}
 	return err
-}
-
-func Info(args ...interface{}) {
-	Logger.Info(args)
-}
-
-func Infof(format string, args ...interface{}) {
-	Logger.Infof(format, args)
-}
-
-func Error(args ...interface{}) {
-	Logger.Error(args)
-}
-
-func Errorf(format string, args ...interface{}) {
-	Logger.Errorf(format, args)
 }
 
 func (hook *FileHook) Levels() []logrus.Level {
@@ -88,4 +96,20 @@ func InitLogger(path string) {
 		},
 	})
 	Logger.Info("Logger initialized")
+}
+
+func Info(args ...interface{}) {
+	Logger.Info(args...)
+}
+
+func Infof(format string, args ...interface{}) {
+	Logger.Infof(format, args...)
+}
+
+func Error(args ...interface{}) {
+	Logger.Error(args...)
+}
+
+func Errorf(format string, args ...interface{}) {
+	Logger.Errorf(format, args...)
 }

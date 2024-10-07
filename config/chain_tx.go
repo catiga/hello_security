@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
-	"fmt"
 	"math/big"
 	"time"
 
@@ -121,7 +120,13 @@ func (t ChainConfig) HandlTransfer(to, mint string, amount *big.Int, wg *model.W
 				},
 			}
 
-			transaction.Message.AccountKeys = append(transaction.Message.AccountKeys, fromAddr, toAddr, solana.MustPublicKeyFromBase58("11111111111111111111111111111111"))
+			same2same := 0
+			transaction.Message.AccountKeys = append(transaction.Message.AccountKeys, fromAddr)
+			if fromAddr != toAddr {
+				transaction.Message.AccountKeys = append(transaction.Message.AccountKeys, toAddr)
+				same2same = 1
+			}
+			transaction.Message.AccountKeys = append(transaction.Message.AccountKeys, solana.MustPublicKeyFromBase58("11111111111111111111111111111111"))
 
 			// SOL 转账指令
 			transferInstruction := system.NewTransferInstruction(
@@ -131,11 +136,12 @@ func (t ChainConfig) HandlTransfer(to, mint string, amount *big.Int, wg *model.W
 			)
 			data := transferInstruction.Build()
 			dData, _ := data.Data()
+
 			compiledTransferInstruction := solana.CompiledInstruction{
-				ProgramIDIndex: uint16(2), // 系统程序在 AccountKeys 中的索引，假设它是第6个
+				ProgramIDIndex: uint16(2),
 				Accounts: []uint16{
-					0, // fromAddr 的索引
-					1, // toAddr 的索引
+					0,
+					uint16(same2same),
 				},
 				Data: dData, // 编译指令的数据
 			}
@@ -152,7 +158,7 @@ func (t ChainConfig) HandlTransfer(to, mint string, amount *big.Int, wg *model.W
 			transaction.Signatures = []solana.Signature{solana.Signature(sig)}
 
 			txbytes, _ := transaction.MarshalBinary()
-			fmt.Println(base64.StdEncoding.EncodeToString(txbytes))
+			log.Info(base64.StdEncoding.EncodeToString(txbytes))
 
 			txhash, err := client.SendTransaction(context.Background(), &transaction)
 			return txhash.String(), err
@@ -185,7 +191,7 @@ func (t ChainConfig) HandlTransfer(to, mint string, amount *big.Int, wg *model.W
 
 			if toAccountInfo != nil {
 				ownaddr := toAccountInfo.Value.Owner.String()
-				fmt.Println(ownaddr)
+				log.Info(ownaddr)
 			}
 
 			if toAccountInfo == nil {
@@ -202,8 +208,7 @@ func (t ChainConfig) HandlTransfer(to, mint string, amount *big.Int, wg *model.W
 				dData, _ := data.Data()
 
 				compiledCreateAccountInstruction := solana.CompiledInstruction{
-					ProgramIDIndex: uint16(7), // 假设 ATA 程序的索引为0
-					// Accounts:       []int{0, (tokenAccountKeyIndex)}, // 使用创建指令的账户
+					ProgramIDIndex: uint16(7),
 					Accounts: []uint16{
 						0,
 						2,
@@ -262,7 +267,7 @@ func (t ChainConfig) HandlTransfer(to, mint string, amount *big.Int, wg *model.W
 			// log.Info("simulate transaction: ", simuTx, err)
 			// if err != nil {
 			for retries := 0; retries < maxRetries; retries++ {
-				outHash, err := client.GetLatestBlockhash(context.Background(), rpc.CommitmentProcessed)
+				outHash, err := client.GetLatestBlockhash(context.Background(), "")
 				if err != nil {
 					log.Errorf("Failed to get latest blockhash: %v", err)
 					continue
@@ -278,33 +283,39 @@ func (t ChainConfig) HandlTransfer(to, mint string, amount *big.Int, wg *model.W
 				transaction.Signatures = []solana.Signature{solana.Signature(sig)}
 
 				// 进行交易模拟
-				simuTx, err := client.SimulateTransaction(context.Background(), &transaction)
-				log.Infof("simulate transaction %d: ", retries, simuTx, err)
+				// simuTx, err := client.SimulateTransaction(context.Background(), &transaction)
+				txhash, err := client.SendTransaction(context.Background(), &transaction)
 
 				// 如果模拟成功（err == nil），则退出重试循环
 				if err == nil {
-					break
+					// break
+					txbytes, _ := transaction.MarshalBinary()
+					base64tx := base64.StdEncoding.EncodeToString(txbytes)
+					log.Info("transaction data:", base64tx)
+					return txhash.String(), err
+				} else {
+					log.Errorf("send transaction failed %d: %v", retries, err)
 				}
 
 				if retries == maxRetries-1 {
-					log.Errorf("Transaction simulation failed after %d attempts: %v", 5, err)
-					return txhash, err
+					log.Errorf("Transaction send failed after %d attempts: %v", 5, err)
+					return "", err
 				}
 
 				time.Sleep(500 * time.Millisecond)
 			}
 			// }
 
-			txhash, err := client.SendTransaction(context.Background(), &transaction)
+			// txhash, err := client.SendTransaction(context.Background(), &transaction)
 			if err != nil {
 				return "", err
 			}
 
-			txbytes, _ := transaction.MarshalBinary()
-			base64tx := base64.StdEncoding.EncodeToString(txbytes)
-			log.Info("transaction data:", base64tx)
+			// txbytes, _ := transaction.MarshalBinary()
+			// base64tx := base64.StdEncoding.EncodeToString(txbytes)
+			// log.Info("transaction data:", base64tx)
 
-			return txhash.String(), err
+			// return txhash.String(), err
 		}
 	}
 	return txhash, errors.New("unsupport chain")

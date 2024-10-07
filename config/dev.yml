@@ -2,7 +2,7 @@ chain:
   - name: SOLANA
     wsRpc: wss://solana-mainnet.core.chainstack.com/c0260deb07f06fce4403c9a4033adafa
     queryRpc:
-      - https://solana-mainnet.core.chainstack.com/c0260deb07f06fce4403c9a4033adafa
+      - https://rpc.ankr.com/solana/93b55d4324fed365b92a4f7735a790b8d5f3b4962298d41a58cb03b5fab7d847
     slotParallel: 1
     txDetal: 200
     rangeRound: 200
