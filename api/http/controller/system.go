@@ -248,6 +248,7 @@ func List(c *gin.Context) {
 		Chain      string    `json:"chain"`
 		CreateTime time.Time `json:"create_time"`
 		Export     bool      `json:"export"`
+		GroupID    uint64    `json:"group_id`
 	}
 
 	retData := make([]WalletList, 0)
@@ -258,6 +259,7 @@ func List(c *gin.Context) {
 			Chain:      v.ChainCode,
 			CreateTime: v.CreateTime,
 			Export:     v.CanPort,
+			GroupID:    v.GroupID,
 		})
 	}
 
