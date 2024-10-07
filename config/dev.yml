@@ -13,6 +13,13 @@ chain:
     slotParallel: 1
     txDetal: 200
     rangeRound: 200
+  - name: BSC
+    wsRpc: wss://mainnet.infura.io/ws/v3/your-infura-project-id
+    queryRpc:
+      - https://rpc.ankr.com/bsc
+    slotParallel: 1
+    txDetal: 200
+    rangeRound: 200
 
 database:
   type: mysql
