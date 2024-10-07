@@ -280,7 +280,7 @@ func (t ChainConfig) HandlTransfer(to, mint string, amount *big.Int, wg *model.W
 				if err == nil {
 					txbytes, _ := transaction.MarshalBinary()
 					base64tx := base64.StdEncoding.EncodeToString(txbytes)
-					log.Infof("transaction data: %s, recentBlockHash: %s", base64tx, outHash.String())
+					log.Infof("txhash: %s, transaction data: %s, recentBlockHash: %s", txhash.String(), base64tx, outHash.String())
 					return txhash.String(), err
 				}
 
