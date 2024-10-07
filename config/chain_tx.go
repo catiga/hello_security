@@ -14,6 +14,7 @@ import (
 	bin "github.com/gagliardetto/binary"
 	"github.com/gagliardetto/solana-go"
 	associatedtokenaccount "github.com/gagliardetto/solana-go/programs/associated-token-account"
+	compute_budget "github.com/gagliardetto/solana-go/programs/compute-budget"
 	"github.com/gagliardetto/solana-go/programs/system"
 	"github.com/gagliardetto/solana-go/programs/token"
 	"github.com/gagliardetto/solana-go/rpc"
@@ -187,7 +188,29 @@ func (t ChainConfig) HandlTransfer(to, mint string, amount *big.Int, wg *model.W
 				solana.MustPublicKeyFromBase58(mint), // Mint 地址
 				solana.MustPublicKeyFromBase58("11111111111111111111111111111111"),            // 系统程序账户
 				solana.MustPublicKeyFromBase58("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"), // 关联 Token 程序
+				solana.MustPublicKeyFromBase58("ComputeBudget111111111111111111111111111111"),
 			)
+
+			computeUnitPrice := uint64(16000000)
+			setComputeUnitPriceIx := compute_budget.SetComputeUnitPrice{computeUnitPrice}
+			cuData, _ := setComputeUnitPriceIx.Build().Data()
+			compiledSetComputeUnitPriceIx := solana.CompiledInstruction{
+				ProgramIDIndex: 7,          // ProgramID 的索引（通常放在 AccountKeys 第一个位置）
+				Accounts:       []uint16{}, // 无需其他账户
+				Data:           cuData,     // 指令数据
+			}
+
+			computeUnitLimit := uint32(202000) // 设置为 202,000 计算单位
+			setComputeUnitLimitIx := compute_budget.SetComputeUnitLimit{computeUnitLimit}
+			clData, _ := setComputeUnitLimitIx.Build().Data()
+			compiledSetComputeUnitLimitIx := solana.CompiledInstruction{
+				ProgramIDIndex: 7,          // ProgramID 的索引（通常放在 AccountKeys 第一个位置）
+				Accounts:       []uint16{}, // 无需其他账户
+				Data:           clData,     // 指令数据
+			}
+
+			transaction.Message.Instructions = append(transaction.Message.Instructions, compiledSetComputeUnitPriceIx, compiledSetComputeUnitLimitIx)
+
 			toAccountInfo, _ := client.GetAccountInfo(context.Background(), toAccount)
 
 			if toAccountInfo != nil {
@@ -209,7 +232,7 @@ func (t ChainConfig) HandlTransfer(to, mint string, amount *big.Int, wg *model.W
 				dData, _ := data.Data()
 
 				compiledCreateAccountInstruction := solana.CompiledInstruction{
-					ProgramIDIndex: uint16(7),
+					ProgramIDIndex: uint16(8),
 					Accounts: []uint16{
 						0,
 						2,
