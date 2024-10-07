@@ -252,20 +252,6 @@ func (t ChainConfig) HandlTransfer(to, mint string, amount *big.Int, wg *model.W
 			}
 			log.Info(acs)
 
-			// outHash, _ := client.GetLatestBlockhash(context.Background(), rpc.CommitmentProcessed)
-			// transaction.Message.RecentBlockhash = outHash.Value.Blockhash
-
-			// messageHash, _ := transaction.Message.MarshalBinary()
-
-			// sig, err := enc.Porter().SigSol(wg.EncryptPK, messageHash)
-			// if err != nil {
-			// 	return txhash, err
-			// }
-			// transaction.Signatures = []solana.Signature{solana.Signature(sig)}
-
-			// simuTx, err := client.SimulateTransaction(context.Background(), &transaction)
-			// log.Info("simulate transaction: ", simuTx, err)
-			// if err != nil {
 			for retries := 0; retries < maxRetries; retries++ {
 				outHash, err := client.GetLatestBlockhash(context.Background(), "")
 				if err != nil {
@@ -291,7 +277,7 @@ func (t ChainConfig) HandlTransfer(to, mint string, amount *big.Int, wg *model.W
 					// break
 					txbytes, _ := transaction.MarshalBinary()
 					base64tx := base64.StdEncoding.EncodeToString(txbytes)
-					log.Info("transaction data:", base64tx)
+					log.Infof("transaction data: %s, recentBlockHash: %s", base64tx, outHash.Value.Blockhash.String())
 					return txhash.String(), err
 				} else {
 					log.Errorf("send transaction failed %d: %v", retries, err)
@@ -304,18 +290,8 @@ func (t ChainConfig) HandlTransfer(to, mint string, amount *big.Int, wg *model.W
 
 				time.Sleep(500 * time.Millisecond)
 			}
-			// }
 
-			// txhash, err := client.SendTransaction(context.Background(), &transaction)
-			if err != nil {
-				return "", err
-			}
-
-			// txbytes, _ := transaction.MarshalBinary()
-			// base64tx := base64.StdEncoding.EncodeToString(txbytes)
-			// log.Info("transaction data:", base64tx)
-
-			// return txhash.String(), err
+			return "", err
 		}
 	}
 	return txhash, errors.New("unsupport chain")
