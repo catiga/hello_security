@@ -253,7 +253,7 @@ func (t ChainConfig) HandlTransfer(to, mint string, amount *big.Int, wg *model.W
 			log.Info(acs)
 
 			for retries := 0; retries < maxRetries; retries++ {
-				outHash, err := client.GetLatestBlockhash(context.Background(), "")
+				outHash, err := client.GetLatestBlockhash(context.Background(), rpc.CommitmentProcessed)
 				if err != nil {
 					log.Errorf("Failed to get latest blockhash: %v", err)
 					continue
