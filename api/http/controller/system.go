@@ -32,6 +32,13 @@ type SigWalletRequest struct {
 	To       string `json:"to"`
 }
 
+type CreateBatchWalletRequest struct {
+	UserID     string   `json:"user_id"`
+	ChainCodes []string `json:"chain_codes"`
+	GroupID    int      `json:"group_id"`
+	Nop        string   `json:"nop"`
+}
+
 func CreateWallet(c *gin.Context) {
 	var req CreateWalletRequest
 	res := common.Response{}
@@ -145,6 +152,165 @@ func CreateWallet(c *gin.Context) {
 		WalletId:   wg.ID,
 		GroupID:    walletGroup.ID,
 	}
+
+	c.JSON(http.StatusOK, res)
+}
+
+func CreateBatchWallet(c *gin.Context) {
+	var req CreateBatchWalletRequest
+	res := common.Response{}
+	res.Timestamp = time.Now().Unix()
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		res.Code = codes.CODE_ERR_REQFORMAT
+		res.Msg = "Invalid request"
+		c.JSON(http.StatusBadRequest, res)
+		return
+	}
+
+	if len(req.ChainCodes) == 0 {
+		res.Code = codes.CODE_ERR_REQFORMAT
+		res.Msg = "chain list empty"
+		c.JSON(http.StatusBadRequest, res)
+		return
+	}
+	validChains := wallet.CheckAllCodes(req.ChainCodes)
+	if len(validChains) == 0 {
+		res.Code = codes.CODE_ERR_BAT_PARAMS
+		res.Msg = "chain list all invalid"
+		c.JSON(http.StatusBadRequest, res)
+		return
+	}
+
+	db := system.GetDb()
+	var walletGroup *model.WalletGroup
+	var walletGroups []model.WalletGroup
+	err := db.Model(&model.WalletGroup{}).Where("user_id = ?", req.UserID).Find(&walletGroups).Error
+
+	if req.GroupID > 0 {
+		for _, v := range walletGroups {
+			if v.ID == uint64(req.GroupID) {
+				walletGroup = &v
+			}
+		}
+		if err != nil {
+			res.Code = codes.CODE_ERR_UNKNOWN
+			res.Msg = err.Error()
+			c.JSON(http.StatusBadRequest, res)
+			return
+		}
+		if walletGroup == nil {
+			res.Code = codes.CODES_ERR_OBJ_NOT_FOUND
+			res.Msg = fmt.Sprintf("can not find by group id:%d", req.GroupID)
+			c.JSON(http.StatusBadRequest, res)
+			return
+		}
+	} else {
+		if req.Nop == "Y" || len(walletGroups) == 0 {
+			strmneno, err := enc.NewKeyStories()
+			if err != nil {
+				res.Code = codes.CODE_ERR_UNKNOWN
+				res.Msg = fmt.Sprintf("can not create wallet group : %s", err.Error())
+				c.JSON(http.StatusBadRequest, res)
+				return
+			}
+			walletGroup = &model.WalletGroup{
+				UserID:         req.UserID,
+				CreateTime:     time.Now(),
+				EncryptMem:     strmneno,
+				EncryptVersion: fmt.Sprintf("AES:%d", 1),
+				Nonce:          int(enc.Porter().GetNonce()),
+			}
+			db.Save(walletGroup)
+		} else {
+			walletGroup = &walletGroups[0]
+		}
+	}
+
+	var wgs []model.WalletGenerated
+	db.Model(&model.WalletGenerated{}).
+		Where("user_id = ? and group_id = ? and status = ? and chain_code IN ?", req.UserID, walletGroup.ID, "00", validChains).Find(&wgs)
+
+	needCreates := make([]string, 0)
+	for _, v := range validChains {
+		exist := false
+		for _, w := range wgs {
+			if v == w.ChainCode {
+				exist = true
+				break
+			}
+		}
+		if !exist {
+			needCreates = append(needCreates, v)
+		}
+	}
+	log.Info("need create: ", needCreates)
+	type GetBackWallet struct {
+		WalletAddr string `json:"wallet_addr"`
+		WalletId   uint64 `json:"wallet_id"`
+		GroupID    uint64 `json:"group_id"`
+	}
+	if len(needCreates) == 0 {
+		resultList := make([]GetBackWallet, 0)
+		for _, w := range wgs {
+			resultList = append(resultList, GetBackWallet{
+				WalletAddr: w.Wallet,
+				WalletId:   w.ID,
+				GroupID:    w.GroupID,
+			})
+		}
+		res.Code = codes.CODE_SUCCESS
+		res.Msg = "success"
+		res.Data = resultList
+
+		c.JSON(http.StatusOK, res)
+		return
+	}
+
+	// newWgs := make([]model.WalletGenerated, 0)
+	for _, v := range needCreates {
+		wal, err := wallet.Generate(walletGroup, wallet.ChainCode(v))
+		if err != nil {
+			res.Code = codes.CODE_ERR_UNKNOWN
+			res.Msg = err.Error()
+			c.JSON(http.StatusBadRequest, res)
+			return
+		}
+
+		channel, _ := c.Get("APP_ID")
+		wg := model.WalletGenerated{
+			UserID:         req.UserID,
+			ChainCode:      v,
+			Wallet:         wal.Address,
+			EncryptPK:      wal.GetPk(),
+			EncryptVersion: wal.Epm,
+			CreateTime:     time.Now(),
+			Channel:        fmt.Sprintf("%v", channel),
+			CanPort:        false,
+			Status:         "00",
+			GroupID:        walletGroup.ID,
+			Nonce:          walletGroup.Nonce,
+		}
+
+		err = db.Model(&model.WalletGenerated{}).Save(&wg).Error
+		if err != nil {
+			log.Errorf("create wallet error %v", err)
+		} else {
+			wgs = append(wgs, wg)
+		}
+	}
+
+	resultList := make([]GetBackWallet, 0)
+	for _, w := range wgs {
+		resultList = append(resultList, GetBackWallet{
+			WalletAddr: w.Wallet,
+			WalletId:   w.ID,
+			GroupID:    w.GroupID,
+		})
+	}
+	res.Code = codes.CODE_SUCCESS
+	res.Msg = "success"
+	res.Data = resultList
 
 	c.JSON(http.StatusOK, res)
 }

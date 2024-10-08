@@ -51,6 +51,17 @@ func IsSupp(cc ChainCode) (bool, bool) {
 	return false, false
 }
 
+func CheckAllCodes(ccs []string) []string {
+	valid := make([]string, 0)
+	for _, v := range ccs {
+		supp, _ := IsSupp(ChainCode(v))
+		if supp {
+			valid = append(valid, v)
+		}
+	}
+	return valid
+}
+
 func New(addr, mem, pk string) *WalletObj {
 	t := &WalletObj{}
 	t.Address = addr
