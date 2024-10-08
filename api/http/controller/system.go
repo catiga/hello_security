@@ -249,6 +249,7 @@ func CreateBatchWallet(c *gin.Context) {
 		WalletAddr string `json:"wallet_addr"`
 		WalletId   uint64 `json:"wallet_id"`
 		GroupID    uint64 `json:"group_id"`
+		ChainCode  string `json:"chain_code"`
 	}
 	if len(needCreates) == 0 {
 		resultList := make([]GetBackWallet, 0)
@@ -257,6 +258,7 @@ func CreateBatchWallet(c *gin.Context) {
 				WalletAddr: w.Wallet,
 				WalletId:   w.ID,
 				GroupID:    w.GroupID,
+				ChainCode:  w.ChainCode,
 			})
 		}
 		res.Code = codes.CODE_SUCCESS
@@ -306,6 +308,7 @@ func CreateBatchWallet(c *gin.Context) {
 			WalletAddr: w.Wallet,
 			WalletId:   w.ID,
 			GroupID:    w.GroupID,
+			ChainCode:  w.ChainCode,
 		})
 	}
 	res.Code = codes.CODE_SUCCESS
