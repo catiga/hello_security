@@ -131,7 +131,7 @@ func CreateWallet(c *gin.Context) {
 
 	err = db.Model(&model.WalletGenerated{}).Save(&wg).Error
 	if err != nil {
-		log.Errorf("create wallet error ", err)
+		log.Errorf("create wallet error %v", err)
 	}
 
 	res.Code = codes.CODE_SUCCESS
@@ -250,7 +250,7 @@ func List(c *gin.Context) {
 		Chain      string    `json:"chain"`
 		CreateTime time.Time `json:"create_time"`
 		Export     bool      `json:"export"`
-		GroupID    uint64    `json:"group_id`
+		GroupID    uint64    `json:"group_id"`
 	}
 
 	retData := make([]WalletList, 0)
