@@ -19,6 +19,7 @@ import (
 	"github.com/gagliardetto/solana-go/programs/system"
 	"github.com/gagliardetto/solana-go/programs/token"
 	"github.com/gagliardetto/solana-go/rpc"
+	hc "github.com/hellodex/HelloSecurity/api/common"
 	"github.com/hellodex/HelloSecurity/log"
 	"github.com/hellodex/HelloSecurity/model"
 	"github.com/hellodex/HelloSecurity/wallet"
@@ -106,7 +107,7 @@ func (t ChainConfig) HandleMessage(message []byte, to string, typecode string, w
 	}
 }
 
-func (t ChainConfig) HandlTransfer(to, mint string, amount *big.Int, wg *model.WalletGenerated) (txhash string, err error) {
+func (t ChainConfig) HandlTransfer(to, mint string, amount *big.Int, wg *model.WalletGenerated, reqconf *hc.OpConfig) (txhash string, err error) {
 	if len(t.GetRpc()) == 0 {
 		return txhash, errors.New("rpc_config")
 	}
@@ -198,6 +199,15 @@ func (t ChainConfig) HandlTransfer(to, mint string, amount *big.Int, wg *model.W
 			)
 
 			computeUnitPrice := uint64(16000000)
+			computeUnitLimit := uint32(202000) // 设置为 202,000 计算单位
+			if reqconf != nil {
+				if reqconf.UnitPrice != nil && reqconf.UnitPrice.Uint64() > 0 {
+					computeUnitPrice = reqconf.UnitPrice.Uint64()
+				}
+				if reqconf.UnitLimit != nil && reqconf.UnitLimit.Uint64() > 0 {
+					computeUnitLimit = uint32(reqconf.UnitLimit.Uint64())
+				}
+			}
 			setComputeUnitPriceIx := compute_budget.SetComputeUnitPrice{computeUnitPrice}
 			cuData, _ := setComputeUnitPriceIx.Build().Data()
 			compiledSetComputeUnitPriceIx := solana.CompiledInstruction{
@@ -206,7 +216,6 @@ func (t ChainConfig) HandlTransfer(to, mint string, amount *big.Int, wg *model.W
 				Data:           cuData,     // 指令数据
 			}
 
-			computeUnitLimit := uint32(202000) // 设置为 202,000 计算单位
 			setComputeUnitLimitIx := compute_budget.SetComputeUnitLimit{computeUnitLimit}
 			clData, _ := setComputeUnitLimitIx.Build().Data()
 			compiledSetComputeUnitLimitIx := solana.CompiledInstruction{

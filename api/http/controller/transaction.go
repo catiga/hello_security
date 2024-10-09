@@ -17,10 +17,11 @@ import (
 )
 
 type TokenTransfer struct {
-	WalletID uint64   `json:"wallet_id"`
-	Token    string   `json:"token"`
-	To       string   `json:"to"`
-	Amount   *big.Int `json:"amount"`
+	WalletID uint64          `json:"wallet_id"`
+	Token    string          `json:"token"`
+	To       string          `json:"to"`
+	Amount   *big.Int        `json:"amount"`
+	Config   common.OpConfig `json:"config"`
 }
 
 func Transfer(c *gin.Context) {
@@ -52,16 +53,9 @@ func Transfer(c *gin.Context) {
 		return
 	}
 
-	// if wg.ChainCode != "SOLANA" {
-	// 	res.Code = codes.CODE_ERR_METHOD_UNSUPPORT
-	// 	res.Msg = fmt.Sprintf("support solana for now %d", req.WalletID)
-	// 	c.JSON(http.StatusBadRequest, res)
-	// 	return
-	// }
-
 	chainConfig := config.GetRpcConfig(wg.ChainCode)
 
-	txhash, err := chainConfig.HandlTransfer(req.To, req.Token, req.Amount, &wg)
+	txhash, err := chainConfig.HandlTransfer(req.To, req.Token, req.Amount, &wg, &req.Config)
 
 	if err != nil {
 		log.Error("transfer error:", req, err)

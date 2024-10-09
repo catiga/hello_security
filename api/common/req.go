@@ -1,5 +1,7 @@
 package common
 
+import "math/big"
+
 const (
 	TYPE_CHAT_INITIAL = "chat_init"
 	TYPE_CHAT_APPEND  = "chat_follow"
@@ -18,4 +20,9 @@ type Request struct {
 	DevId     string `json:"devid"`
 	UserId    uint64 `json:"userid"`
 	Data      string `json:"data"`
+}
+
+type OpConfig struct {
+	UnitPrice *big.Int `json:"unit_price"`
+	UnitLimit *big.Int `json:"unit_limit"`
 }
