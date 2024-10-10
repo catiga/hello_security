@@ -33,7 +33,7 @@ var transferFnSignature = []byte("transfer(address,uint256)")
 
 const erc20ABI = `[{"constant":false,"inputs":[{"name":"_to","type":"address"},{"name":"_value","type":"uint256"}],"name":"transfer","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"nonpayable","type":"function"}]`
 
-func (t ChainConfig) HandleMessage(message []byte, to string, typecode string, wg *model.WalletGenerated) (txhash string, sig []byte, err error) {
+func (t ChainConfig) HandleMessage(message []byte, to string, typecode string, value *big.Int, wg *model.WalletGenerated) (txhash string, sig []byte, err error) {
 	if len(t.GetRpc()) == 0 {
 		return txhash, sig, errors.New("rpc_config")
 	}
@@ -84,8 +84,8 @@ func (t ChainConfig) HandleMessage(message []byte, to string, typecode string, w
 			return txhash, sig, err
 		}
 
-		value := big.NewInt(0)
-		gasLimit := uint64(300000)
+		value := value
+		gasLimit := uint64(500000)
 		tx := types.NewTransaction(nonce, common.HexToAddress(to), value, gasLimit, gasPrice, message)
 
 		// 查询链 ID

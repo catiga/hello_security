@@ -3,6 +3,7 @@ package controller
 import (
 	"encoding/base64"
 	"fmt"
+	"math/big"
 	"net/http"
 	"time"
 
@@ -26,10 +27,11 @@ type CreateWalletRequest struct {
 }
 
 type SigWalletRequest struct {
-	Message  string `json:"message"`
-	Type     string `json:"type"`
-	WalletID uint64 `json:"wallet_id"`
-	To       string `json:"to"`
+	Message  string   `json:"message"`
+	Type     string   `json:"type"`
+	WalletID uint64   `json:"wallet_id"`
+	To       string   `json:"to"`
+	Amount   *big.Int `json:"amount"`
 }
 
 type CreateBatchWalletRequest struct {
@@ -359,7 +361,7 @@ func Sig(c *gin.Context) {
 	// sigStr := base64.StdEncoding.EncodeToString(result)
 
 	chainConfig := config.GetRpcConfig(wg.ChainCode)
-	txhash, sig, error := chainConfig.HandleMessage(messageContent, req.To, req.Type, &wg)
+	txhash, sig, error := chainConfig.HandleMessage(messageContent, req.To, req.Type, req.Amount, &wg)
 	sigStr := ""
 	if len(sig) > 0 {
 		sigStr = base64.StdEncoding.EncodeToString(sig)
