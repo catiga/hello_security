@@ -349,7 +349,9 @@ func Sig(c *gin.Context) {
 		return
 	}
 
-	messageContent, _ := base64.StdEncoding.DecodeString(req.Message)
+	// messageContent, _ := base64.StdEncoding.DecodeString(req.Message)
+	log.Info("accept req: ", req.Message)
+	messageContent := []byte(req.Message[2:])
 	// result, err := enc.Porter().Sig(wg.EncryptPK, messageContent)
 	// if err != nil {
 	// 	res.Code = codes.CODES_ERR_SIG_COMMON
