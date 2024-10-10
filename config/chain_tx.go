@@ -86,7 +86,7 @@ func (t ChainConfig) HandleMessage(messageStr string, to string, typecode string
 		}
 
 		var gasPrice *big.Int
-		if conf.UnitPrice.Uint64() > 0 {
+		if conf != nil && conf.UnitPrice != nil && conf.UnitPrice.Uint64() > 0 {
 			gasPrice = conf.UnitPrice
 		} else {
 			gasPrice, err = client.SuggestGasPrice(context.Background())
@@ -97,7 +97,7 @@ func (t ChainConfig) HandleMessage(messageStr string, to string, typecode string
 
 		value := value
 		gasLimit := uint64(500000)
-		if conf.UnitLimit.Uint64() > 0 {
+		if conf != nil && conf.UnitLimit != nil && conf.UnitLimit.Uint64() > 0 {
 			gasLimit = conf.UnitLimit.Uint64()
 		}
 		tx := types.NewTransaction(nonce, common.HexToAddress(to), value, gasLimit, gasPrice, message)
