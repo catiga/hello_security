@@ -10,6 +10,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	bin "github.com/gagliardetto/binary"
@@ -33,12 +34,13 @@ var transferFnSignature = []byte("transfer(address,uint256)")
 
 const erc20ABI = `[{"constant":false,"inputs":[{"name":"_to","type":"address"},{"name":"_value","type":"uint256"}],"name":"transfer","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"nonpayable","type":"function"}]`
 
-func (t ChainConfig) HandleMessage(message []byte, to string, typecode string, value *big.Int, wg *model.WalletGenerated) (txhash string, sig []byte, err error) {
+func (t ChainConfig) HandleMessage(messageStr string, to string, typecode string, value *big.Int, wg *model.WalletGenerated) (txhash string, sig []byte, err error) {
 	if len(t.GetRpc()) == 0 {
 		return txhash, sig, errors.New("rpc_config")
 	}
 
 	if wg.ChainCode == "SOLANA" {
+		message, _ := base64.StdEncoding.DecodeString(messageStr)
 		if typecode == "sign" {
 			sig, err = enc.Porter().SigSol(wg, message)
 			if err != nil {
@@ -65,6 +67,7 @@ func (t ChainConfig) HandleMessage(message []byte, to string, typecode string, v
 
 		return base58.Encode(txhash[:]), sig, err
 	} else { // for all evm
+		message, _ := hexutil.Decode(messageStr)
 		if typecode == "sign" {
 			sig, err = enc.Porter().SigEth(wg, message)
 			if err != nil {
