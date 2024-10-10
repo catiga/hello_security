@@ -34,7 +34,7 @@ var transferFnSignature = []byte("transfer(address,uint256)")
 
 const erc20ABI = `[{"constant":false,"inputs":[{"name":"_to","type":"address"},{"name":"_value","type":"uint256"}],"name":"transfer","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"nonpayable","type":"function"}]`
 
-func (t ChainConfig) HandleMessage(messageStr string, to string, typecode string, value *big.Int, wg *model.WalletGenerated) (txhash string, sig []byte, err error) {
+func (t ChainConfig) HandleMessage(messageStr string, to string, typecode string, value *big.Int, conf *hc.OpConfig, wg *model.WalletGenerated) (txhash string, sig []byte, err error) {
 	if len(t.GetRpc()) == 0 {
 		return txhash, sig, errors.New("rpc_config")
 	}
@@ -85,13 +85,21 @@ func (t ChainConfig) HandleMessage(messageStr string, to string, typecode string
 			return txhash, sig, err
 		}
 
-		gasPrice, err := client.SuggestGasPrice(context.Background())
-		if err != nil {
-			return txhash, sig, err
+		var gasPrice *big.Int
+		if conf.UnitPrice.Uint64() > 0 {
+			gasPrice = conf.UnitPrice
+		} else {
+			gasPrice, err = client.SuggestGasPrice(context.Background())
+			if err != nil {
+				return txhash, sig, err
+			}
 		}
 
 		value := value
 		gasLimit := uint64(500000)
+		if conf.UnitLimit.Uint64() > 0 {
+			gasLimit = conf.UnitLimit.Uint64()
+		}
 		tx := types.NewTransaction(nonce, common.HexToAddress(to), value, gasLimit, gasPrice, message)
 
 		// 查询链 ID

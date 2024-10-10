@@ -27,11 +27,12 @@ type CreateWalletRequest struct {
 }
 
 type SigWalletRequest struct {
-	Message  string   `json:"message"`
-	Type     string   `json:"type"`
-	WalletID uint64   `json:"wallet_id"`
-	To       string   `json:"to"`
-	Amount   *big.Int `json:"amount"`
+	Message  string          `json:"message"`
+	Type     string          `json:"type"`
+	WalletID uint64          `json:"wallet_id"`
+	To       string          `json:"to"`
+	Amount   *big.Int        `json:"amount"`
+	Config   common.OpConfig `json:"config"`
 }
 
 type CreateBatchWalletRequest struct {
@@ -349,21 +350,10 @@ func Sig(c *gin.Context) {
 		return
 	}
 
-	// messageContent, _ := base64.StdEncoding.DecodeString(req.Message)
 	log.Info("accept req: ", req.Message)
 
-	// result, err := enc.Porter().Sig(wg.EncryptPK, messageContent)
-	// if err != nil {
-	// 	res.Code = codes.CODES_ERR_SIG_COMMON
-	// 	res.Msg = fmt.Sprintf("sign error %s", err.Error())
-	// 	c.JSON(http.StatusBadRequest, res)
-	// 	return
-	// }
-
-	// sigStr := base64.StdEncoding.EncodeToString(result)
-
 	chainConfig := config.GetRpcConfig(wg.ChainCode)
-	txhash, sig, error := chainConfig.HandleMessage(req.Message, req.To, req.Type, req.Amount, &wg)
+	txhash, sig, error := chainConfig.HandleMessage(req.Message, req.To, req.Type, req.Amount, &req.Config, &wg)
 	sigStr := ""
 	if len(sig) > 0 {
 		sigStr = base64.StdEncoding.EncodeToString(sig)
