@@ -390,13 +390,13 @@ func Sig(c *gin.Context) {
 	res.Code = codes.CODE_SUCCESS
 	res.Msg = "success"
 	res.Data = struct {
-		Signature string `json:signature"`
-		Wallet    string `json:wallet"`
+		Signature string `json:"signature"`
+		Wallet    string `json:"wallet"`
 		Tx        string `json:"tx"`
 	}{
 		Signature: sigStr,
 		Wallet:    wg.Wallet,
-		Tx:        "",
+		Tx:        txhash,
 	}
 	c.JSON(http.StatusOK, res)
 }

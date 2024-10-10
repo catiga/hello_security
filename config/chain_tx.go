@@ -67,7 +67,10 @@ func (t ChainConfig) HandleMessage(messageStr string, to string, typecode string
 
 		return base58.Encode(txhash[:]), sig, err
 	} else { // for all evm
-		message, _ := hexutil.Decode(messageStr)
+		message, err := hexutil.Decode(messageStr)
+		if err != nil {
+			return txhash, sig, err
+		}
 		if typecode == "sign" {
 			sig, err = enc.Porter().SigEth(wg, message)
 			if err != nil {
