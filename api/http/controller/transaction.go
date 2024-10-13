@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/hellodex/HelloSecurity/api/common"
+	"github.com/hellodex/HelloSecurity/chain"
 	"github.com/hellodex/HelloSecurity/codes"
 	"github.com/hellodex/HelloSecurity/config"
 	"github.com/hellodex/HelloSecurity/log"
@@ -55,7 +56,7 @@ func Transfer(c *gin.Context) {
 
 	chainConfig := config.GetRpcConfig(wg.ChainCode)
 
-	txhash, err := chainConfig.HandlTransfer(req.To, req.Token, req.Amount, &wg, &req.Config)
+	txhash, err := chain.HandlTransfer(chainConfig, req.To, req.Token, req.Amount, &wg, &req.Config)
 
 	if err != nil {
 		log.Error("transfer error:", req, err)

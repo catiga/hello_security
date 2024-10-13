@@ -21,19 +21,28 @@ import (
 
 	log "github.com/hellodex/HelloSecurity/log"
 	"github.com/hellodex/HelloSecurity/model"
+	"github.com/hellodex/HelloSecurity/system"
 	"golang.org/x/crypto/ed25519"
 	"golang.org/x/crypto/pbkdf2"
 )
 
 const (
 	method      = "AES"
+	sys_init    = "Sys_Init"
+	sys_seg     = "Sys_Seg"
 	defaultSeed = "my_secret_seed_value"
+	threshold   = 5
+	threslimit  = 3
 )
 
 type EncPort struct {
-	aesKey []byte
-	Method string
-	nonce  uint
+	segs     []Hexkey
+	aesKey   []byte
+	Method   string
+	nonce    uint
+	Recover  bool
+	hashkey  string
+	hashsegs []Hexkey
 }
 
 var e *EncPort
@@ -47,6 +56,30 @@ func init() {
 		e = &EncPort{
 			Method: method,
 		}
+		var result []model.SysDes
+		db := system.GetDb()
+		db.Model(&model.SysDes{}).Where("desk = ? and flag = ?", sys_init, 0).Find(&result)
+		if result == nil || len(result) != 1 {
+			log.Fatal("system key config error or empty")
+		}
+		if len(result[0].Desv) == 0 {
+			log.Fatal("system key value empty")
+		}
+
+		e.hashkey = result[0].Desv
+
+		result = result[:0]
+		db.Model(&model.SysDes{}).Where("desk = ? and flag = ?", sys_seg, 0).Find(&result)
+		if len(result) != threshold {
+			log.Fatal("system key segments setting error or empty")
+		}
+		for _, v := range result {
+			if len(v.Desv) == 0 {
+				log.Fatal("system key segments value empty")
+			}
+			e.hashsegs = append(e.hashsegs, Hexkey(v.Desv))
+		}
+
 		// seed := defaultSeed
 		// key := sha256.Sum256([]byte(seed))
 		// e.aesKey = key[:]
@@ -55,6 +88,31 @@ func init() {
 
 func Porter() *EncPort {
 	return e
+}
+
+func (e *EncPort) SetSegKey(seg string) (bool, error) {
+	if e.Recover {
+		return true, nil
+	}
+	for _, v := range e.hashsegs {
+		val := crypto.Keccak256([]byte(seg))
+		valHex := hex.EncodeToString(val)
+		if v != Hexkey(valHex) {
+			return false, errors.New("invalid_segment")
+		}
+	}
+	e.segs = append(e.segs, Hexkey(seg))
+	if val, err := recover(e.segs); err != nil {
+		return false, err
+	} else {
+		valSeg := crypto.Keccak256([]byte(val))
+		valHex := hex.EncodeToString(valSeg)
+		if valHex == e.hashkey {
+			return true, nil
+		} else {
+			return false, nil
+		}
+	}
 }
 
 func (e *EncPort) SetAESKey(seed string) error {

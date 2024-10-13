@@ -86,7 +86,6 @@ func Generate(wg *model.WalletGroup, chainCode ChainCode) (*WalletObj, error) {
 		var addr, mem, pk string
 		var err error
 		if evm {
-			// addr, mem, pk, err = generateEVM()
 			addr, mem, pk, err = enc.GenerateEVM(wg)
 			if err != nil {
 				return nil, err
@@ -144,35 +143,26 @@ func generateEVM() (string, string, string, error) {
 }
 
 func generateSolana() (string, string, string, error) {
-	// 生成 128-bit 的随机熵
 	entropy, err := bip39.NewEntropy(128)
 	if err != nil {
 		return "", "", "", err
 	}
 
-	// 通过熵生成助记词
 	mnemonic, err := bip39.NewMnemonic(entropy)
 	if err != nil {
 		return "", "", "", err
 	}
 
-	// 生成助记词种子
 	seed := bip39.NewSeed(mnemonic, "")
 
-	// 使用PBKDF2生成私钥 (32字节)
 	privateKeySeed := pbkdf2.Key(seed, []byte("ed25519 seed"), 2048, ed25519.SeedSize, sha256.New)
 
-	// 根据私钥种子生成 ed25519 私钥
 	privateKey := ed25519.NewKeyFromSeed(privateKeySeed)
 
-	// 从私钥生成公钥
 	publicKey := privateKey.Public().(ed25519.PublicKey)
 
-	// Solana 地址是公钥的 Base58 编码
 	address := base58.Encode(publicKey)
 
-	// 将私钥和助记词加密存储
-	// 这里加密逻辑可根据需求实现，也可以替换为自己的加密方法
 	mneBytes, err := enc.Porter().Encrypt([]byte(mnemonic))
 	if err != nil {
 		return "", "", "", err
@@ -183,6 +173,5 @@ func generateSolana() (string, string, string, error) {
 		return "", "", "", err
 	}
 
-	// 返回Solana地址，和加密后的助记词、私钥
 	return address, base64.StdEncoding.EncodeToString(mneBytes), base64.StdEncoding.EncodeToString(pkBytes), nil
 }

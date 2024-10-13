@@ -1,4 +1,4 @@
-package config
+package chain
 
 import (
 	"context"
@@ -21,6 +21,7 @@ import (
 	"github.com/gagliardetto/solana-go/programs/token"
 	"github.com/gagliardetto/solana-go/rpc"
 	hc "github.com/hellodex/HelloSecurity/api/common"
+	"github.com/hellodex/HelloSecurity/config"
 	"github.com/hellodex/HelloSecurity/log"
 	"github.com/hellodex/HelloSecurity/model"
 	"github.com/hellodex/HelloSecurity/wallet"
@@ -34,7 +35,7 @@ var transferFnSignature = []byte("transfer(address,uint256)")
 
 const erc20ABI = `[{"constant":false,"inputs":[{"name":"_to","type":"address"},{"name":"_value","type":"uint256"}],"name":"transfer","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"nonpayable","type":"function"}]`
 
-func (t ChainConfig) HandleMessage(messageStr string, to string, typecode string, value *big.Int, conf *hc.OpConfig, wg *model.WalletGenerated) (txhash string, sig []byte, err error) {
+func HandleMessage(t *config.ChainConfig, messageStr string, to string, typecode string, value *big.Int, conf *hc.OpConfig, wg *model.WalletGenerated) (txhash string, sig []byte, err error) {
 	if len(t.GetRpc()) == 0 {
 		return txhash, sig, errors.New("rpc_config")
 	}
@@ -121,7 +122,7 @@ func (t ChainConfig) HandleMessage(messageStr string, to string, typecode string
 	}
 }
 
-func (t ChainConfig) HandlTransfer(to, mint string, amount *big.Int, wg *model.WalletGenerated, reqconf *hc.OpConfig) (txhash string, err error) {
+func HandlTransfer(t *config.ChainConfig, to, mint string, amount *big.Int, wg *model.WalletGenerated, reqconf *hc.OpConfig) (txhash string, err error) {
 	if len(t.GetRpc()) == 0 {
 		return txhash, errors.New("rpc_config")
 	}

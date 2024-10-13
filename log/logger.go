@@ -113,3 +113,7 @@ func Error(args ...interface{}) {
 func Errorf(format string, args ...interface{}) {
 	Logger.Errorf(format, args...)
 }
+
+func Fatal(args ...interface{}) {
+	Logger.Fatal(args...)
+}

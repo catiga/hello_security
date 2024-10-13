@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/hellodex/HelloSecurity/api/common"
+	chain "github.com/hellodex/HelloSecurity/chain"
 	"github.com/hellodex/HelloSecurity/codes"
 	"github.com/hellodex/HelloSecurity/config"
 	"github.com/hellodex/HelloSecurity/log"
@@ -353,7 +354,7 @@ func Sig(c *gin.Context) {
 	log.Info("accept req: ", req.Message)
 
 	chainConfig := config.GetRpcConfig(wg.ChainCode)
-	txhash, sig, error := chainConfig.HandleMessage(req.Message, req.To, req.Type, req.Amount, &req.Config, &wg)
+	txhash, sig, error := chain.HandleMessage(chainConfig, req.Message, req.To, req.Type, req.Amount, &req.Config, &wg)
 	sigStr := ""
 	if len(sig) > 0 {
 		sigStr = base64.StdEncoding.EncodeToString(sig)
