@@ -2,10 +2,13 @@ package enc
 
 import (
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
+	"log"
 	"testing"
 
 	"github.com/mr-tron/base58"
+	"golang.org/x/crypto/sha3"
 )
 
 func TestSec(t *testing.T) {
@@ -31,4 +34,42 @@ func TestSec(t *testing.T) {
 	pkss, _ := base64.StdEncoding.DecodeString(pks)
 	pksss := base58.Encode(pkss)
 	fmt.Println(pks, pksss)
+}
+
+func TestGen(t *testing.T) {
+	secret := "helloworld"
+	totalShares := 5
+	threshold := 3
+
+	hash := sha3.New256()
+	hash.Write([]byte(secret))
+	hashedBytes := hash.Sum(nil)
+	shareHash := hex.EncodeToString(hashedBytes)
+	fmt.Println("general key: ", shareHash)
+
+	shares, err := Split(secret, totalShares, threshold)
+	if err != nil {
+		log.Fatalf("Error splitting key: %v", err)
+	}
+
+	fmt.Println("Generated Shares:")
+	for i, share := range shares {
+		fmt.Printf("Share %d: %s\n", i+1, share)
+	}
+	for i, share := range shares {
+		hash := sha3.New256()
+		hash.Write([]byte(share))
+
+		hashedBytes := hash.Sum(nil)
+		shareHash := hex.EncodeToString(hashedBytes)
+		fmt.Printf("Share %d: %s\n", i+1, shareHash)
+	}
+
+	selectedShares := shares[:threshold]
+	recoveredSecret, err := recover(selectedShares)
+	if err != nil {
+		log.Fatalf("Error recovering key: %v", err)
+	}
+
+	fmt.Printf("Recovered Secret: %s\n", recoveredSecret)
 }
