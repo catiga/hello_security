@@ -419,7 +419,7 @@ func GenerateSolana(wg *model.WalletGroup) (string, string, string, error) {
 
 func (e *EncPort) Decrypt(ciphertext, nonce []byte) ([]byte, error) {
 	if len(e.aesKey) == 0 {
-		return nil, errors.New("AES key not set")
+		return nil, errors.New("system key not set")
 	}
 
 	block, err := aes.NewCipher(e.aesKey)
