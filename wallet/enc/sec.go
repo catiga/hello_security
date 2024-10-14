@@ -417,25 +417,25 @@ func GenerateSolana(wg *model.WalletGroup) (string, string, string, error) {
 	return address, base64.StdEncoding.EncodeToString(mneBytes), base64.StdEncoding.EncodeToString(pkBytes), nil
 }
 
-// func (e *EncPort) Decrypt(ciphertext, nonce []byte) ([]byte, error) {
-// 	if len(e.aesKey) == 0 {
-// 		return nil, errors.New("AES key not set")
-// 	}
+func (e *EncPort) Decrypt(ciphertext, nonce []byte) ([]byte, error) {
+	if len(e.aesKey) == 0 {
+		return nil, errors.New("AES key not set")
+	}
 
-// 	block, err := aes.NewCipher(e.aesKey)
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	block, err := aes.NewCipher(e.aesKey)
+	if err != nil {
+		return nil, err
+	}
 
-// 	aesGCM, err := cipher.NewGCM(block)
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	aesGCM, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
 
-// 	plaintext, err := aesGCM.Open(nil, nonce, ciphertext, nil)
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	plaintext, err := aesGCM.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		return nil, err
+	}
 
-// 	return plaintext, nil
-// }
+	return plaintext, nil
+}
