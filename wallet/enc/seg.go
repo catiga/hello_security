@@ -20,19 +20,19 @@ func (t Hexkey) Decode() (v []byte) {
 	return v
 }
 
-type polynomial struct {
-	coefficients []uint8
+type polyfunk struct {
+	complexs []uint8
 }
 
-func (p *polynomial) evaluate(x uint8) uint8 {
+func (p *polyfunk) evaluate(x uint8) uint8 {
 	if x == 0 {
-		return p.coefficients[0]
+		return p.complexs[0]
 	}
 
-	degree := len(p.coefficients) - 1
-	out := p.coefficients[degree]
+	degree := len(p.complexs) - 1
+	out := p.complexs[degree]
 	for i := degree - 1; i >= 0; i-- {
-		coeff := p.coefficients[i]
+		coeff := p.complexs[i]
 		out = add(mult(out, x), coeff)
 	}
 	return out
@@ -100,14 +100,14 @@ func interpolatePolynomial(x_samples, y_samples []uint8, x uint8) uint8 {
 	return result
 }
 
-func makePolynomial(intercept, degree uint8) (polynomial, error) {
-	p := polynomial{
-		coefficients: make([]byte, degree+1),
+func makePolyfunk(intercept, degree uint8) (polyfunk, error) {
+	p := polyfunk{
+		complexs: make([]byte, degree+1),
 	}
 
-	p.coefficients[0] = intercept
+	p.complexs[0] = intercept
 
-	if _, err := rand.Read(p.coefficients[1:]); err != nil {
+	if _, err := rand.Read(p.complexs[1:]); err != nil {
 		return p, err
 	}
 
@@ -141,7 +141,7 @@ func split(secret []byte, parts, threshold int) ([][]byte, error) {
 	}
 
 	for idx, val := range secret {
-		p, err := makePolynomial(val, uint8(threshold-1))
+		p, err := makePolyfunk(val, uint8(threshold-1))
 		if err != nil {
 			return nil, fmt.Errorf("failed for generating polynomial: %w", err)
 		}
