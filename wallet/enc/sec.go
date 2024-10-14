@@ -151,6 +151,7 @@ func (e *EncPort) SetAESKey(seed string) error {
 		return errors.New("invalid key set")
 	}
 	e.nonce = uint(aesGCM.NonceSize())
+	e.recover = true
 	return nil
 }
 
