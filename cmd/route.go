@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/hellodex/HelloSecurity/model"
 	"github.com/hellodex/HelloSecurity/system"
 	"github.com/hellodex/HelloSecurity/wallet/enc"
+	"golang.org/x/crypto/sha3"
 )
 
 type CommandHandler func(conn net.Conn, args []string)
@@ -59,14 +59,22 @@ func showWelcome(conn net.Conn, args []string) {
 	conn.Write([]byte(sb))
 }
 
+func hashHex(o string) string {
+	hash := sha3.New256()
+	hash.Write([]byte(o))
+	hashedBytes := hash.Sum(nil)
+	return hex.EncodeToString(hashedBytes)
+}
+
 func initSec(conn net.Conn, args []string) {
 	if len(args) != 1 {
 		conn.Write([]byte("unexpected params\n"))
 		return
 	}
 	keyone := args[0]
-	val := crypto.Keccak256([]byte(keyone))
-	valHex := hex.EncodeToString(val)
+	// val := crypto.Keccak256([]byte(keyone))
+	// valHex := hex.EncodeToString(val)
+	valHex := hashHex(keyone)
 
 	db := system.GetDb()
 	var result model.SysDes
