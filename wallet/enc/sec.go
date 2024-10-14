@@ -24,6 +24,7 @@ import (
 	"github.com/hellodex/HelloSecurity/system"
 	"golang.org/x/crypto/ed25519"
 	"golang.org/x/crypto/pbkdf2"
+	"golang.org/x/crypto/sha3"
 )
 
 const (
@@ -40,7 +41,7 @@ type EncPort struct {
 	aesKey   []byte
 	Method   string
 	nonce    uint
-	Recover  bool
+	recover  bool
 	hashkey  string
 	hashsegs []Hexkey
 }
@@ -79,10 +80,6 @@ func init() {
 			}
 			e.hashsegs = append(e.hashsegs, Hexkey(v.Desv))
 		}
-
-		// seed := defaultSeed
-		// key := sha256.Sum256([]byte(seed))
-		// e.aesKey = key[:]
 	}
 }
 
@@ -90,24 +87,43 @@ func Porter() *EncPort {
 	return e
 }
 
+func hashHex(o string) string {
+	hash := sha3.New256()
+	hash.Write([]byte(o))
+	hashedBytes := hash.Sum(nil)
+	return hex.EncodeToString(hashedBytes)
+}
+
+func (e *EncPort) Recovered() bool {
+	return e.recover
+}
+
 func (e *EncPort) SetSegKey(seg string) (bool, error) {
-	if e.Recover {
+	if e.recover {
 		return true, nil
 	}
+	valid := false
 	for _, v := range e.hashsegs {
-		val := crypto.Keccak256([]byte(seg))
-		valHex := hex.EncodeToString(val)
-		if v != Hexkey(valHex) {
-			return false, errors.New("invalid_segment")
+		valHex := hashHex(seg)
+		if v == Hexkey(valHex) {
+			valid = true
+			break
 		}
 	}
+	if !valid {
+		return false, errors.New("invalid_seg")
+	}
 	e.segs = append(e.segs, Hexkey(seg))
+	if len(e.segs) == 1 {
+		return false, nil
+	}
 	if val, err := recover(e.segs); err != nil {
 		return false, err
 	} else {
-		valSeg := crypto.Keccak256([]byte(val))
-		valHex := hex.EncodeToString(valSeg)
+		valHex := hashHex(val)
 		if valHex == e.hashkey {
+			e.recover = true
+			e.SetAESKey(val)
 			return true, nil
 		} else {
 			return false, nil
@@ -144,7 +160,7 @@ func (e *EncPort) GetNonce() uint {
 
 func (e *EncPort) Encrypt(plaintext []byte) ([]byte, error) {
 	if len(e.aesKey) == 0 {
-		return nil, errors.New("AES key not set")
+		return nil, errors.New("hello security key not set")
 	}
 
 	block, err := aes.NewCipher(e.aesKey)
@@ -152,7 +168,6 @@ func (e *EncPort) Encrypt(plaintext []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	// 使用 GCM 模式
 	aesGCM, err := cipher.NewGCM(block)
 	if err != nil {
 		return nil, err
@@ -169,7 +184,7 @@ func (e *EncPort) Encrypt(plaintext []byte) ([]byte, error) {
 
 func (e *EncPort) decrypt(ciphertext, nonce []byte) ([]byte, error) {
 	if len(e.aesKey) == 0 {
-		return nil, errors.New("AES key not set")
+		return nil, errors.New("hello security key not set")
 	}
 
 	block, err := aes.NewCipher(e.aesKey)
@@ -401,3 +416,26 @@ func GenerateSolana(wg *model.WalletGroup) (string, string, string, error) {
 
 	return address, base64.StdEncoding.EncodeToString(mneBytes), base64.StdEncoding.EncodeToString(pkBytes), nil
 }
+
+// func (e *EncPort) Decrypt(ciphertext, nonce []byte) ([]byte, error) {
+// 	if len(e.aesKey) == 0 {
+// 		return nil, errors.New("AES key not set")
+// 	}
+
+// 	block, err := aes.NewCipher(e.aesKey)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	aesGCM, err := cipher.NewGCM(block)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	plaintext, err := aesGCM.Open(nil, nonce, ciphertext, nil)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	return plaintext, nil
+// }

@@ -16,4 +16,7 @@ func Routers(e *gin.RouterGroup) {
 	sysGroup.POST("/wallet/sig", controller.Sig)
 	sysGroup.POST("/wallet/list", controller.List)
 	sysGroup.POST("/wallet/transfer", controller.Transfer)
+
+	sysGroup.POST("/sys/initSeg", controller.InitKeySeg)
+	sysGroup.POST("/sys/testRun", controller.TestRun)
 }
