@@ -32,14 +32,14 @@ func InitKeySeg(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		res.Code = codes.CODE_ERR_REQFORMAT
 		res.Msg = "Invalid Request"
-		c.JSON(http.StatusBadRequest, res)
+		c.JSON(http.StatusOK, res)
 		return
 	}
 
 	if len(req.Val) == 0 {
 		res.Code = codes.CODES_ERR_PARA_EMPTY
 		res.Msg = "Invalid Parameter"
-		c.JSON(http.StatusBadRequest, res)
+		c.JSON(http.StatusOK, res)
 		return
 	}
 
@@ -49,7 +49,7 @@ func InitKeySeg(c *gin.Context) {
 		if err != nil {
 			res.Code = codes.CODE_ERR_UNKNOWN
 			res.Msg = fmt.Sprintf("init seg: %s", err.Error())
-			c.JSON(http.StatusBadRequest, res)
+			c.JSON(http.StatusOK, res)
 			return
 		}
 		if ok {
@@ -72,14 +72,14 @@ func TestRun(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		res.Code = codes.CODE_ERR_REQFORMAT
 		res.Msg = "Invalid Request"
-		c.JSON(http.StatusBadRequest, res)
+		c.JSON(http.StatusOK, res)
 		return
 	}
 
 	if len(req.Val) == 0 {
 		res.Code = codes.CODES_ERR_PARA_EMPTY
 		res.Msg = "Invalid Parameter"
-		c.JSON(http.StatusBadRequest, res)
+		c.JSON(http.StatusOK, res)
 		return
 	}
 
@@ -87,7 +87,7 @@ func TestRun(c *gin.Context) {
 	if !coverOk {
 		res.Code = codes.CODE_ERR_UNKNOWN
 		res.Msg = "waiting for more seg for recovering"
-		c.JSON(http.StatusBadRequest, res)
+		c.JSON(http.StatusOK, res)
 		return
 	}
 
@@ -96,7 +96,7 @@ func TestRun(c *gin.Context) {
 	if err != nil {
 		res.Code = codes.CODE_ERR_UNKNOWN
 		res.Msg = fmt.Sprintf("encrypt error: %s", err.Error())
-		c.JSON(http.StatusBadRequest, res)
+		c.JSON(http.StatusOK, res)
 		return
 	}
 

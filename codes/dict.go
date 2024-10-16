@@ -14,6 +14,7 @@ const (
 	CODES_ERR_SIG_COMMON      = 10
 	CODES_ERR_CONFIG          = 11
 	CODES_ERR_PARA_EMPTY      = 12
+	CODES_ERR_TX              = 13
 
 	CODE_ERR_UNKNOWN = 900
 

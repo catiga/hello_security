@@ -51,7 +51,7 @@ func CreateWallet(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		res.Code = codes.CODE_ERR_REQFORMAT
 		res.Msg = "Invalid request"
-		c.JSON(http.StatusBadRequest, res)
+		c.JSON(http.StatusOK, res)
 		return
 	}
 
@@ -69,13 +69,13 @@ func CreateWallet(c *gin.Context) {
 		if err != nil {
 			res.Code = codes.CODE_ERR_UNKNOWN
 			res.Msg = err.Error()
-			c.JSON(http.StatusBadRequest, res)
+			c.JSON(http.StatusOK, res)
 			return
 		}
 		if walletGroup == nil {
 			res.Code = codes.CODES_ERR_OBJ_NOT_FOUND
 			res.Msg = fmt.Sprintf("can not find by group id:%d", req.GroupID)
-			c.JSON(http.StatusBadRequest, res)
+			c.JSON(http.StatusOK, res)
 			return
 		}
 	} else {
@@ -84,7 +84,7 @@ func CreateWallet(c *gin.Context) {
 			if err != nil {
 				res.Code = codes.CODE_ERR_UNKNOWN
 				res.Msg = fmt.Sprintf("can not create wallet group : %s", err.Error())
-				c.JSON(http.StatusBadRequest, res)
+				c.JSON(http.StatusOK, res)
 				return
 			}
 			walletGroup = &model.WalletGroup{
@@ -112,7 +112,7 @@ func CreateWallet(c *gin.Context) {
 	if exist != nil {
 		res.Code = codes.CODE_ERR_EXIST_OBJ
 		res.Msg = "exist wallet for this chain code"
-		c.JSON(http.StatusBadRequest, res)
+		c.JSON(http.StatusOK, res)
 		return
 	}
 	// var encmno string = walletGroup.EncryptMem
@@ -121,7 +121,7 @@ func CreateWallet(c *gin.Context) {
 	if err != nil {
 		res.Code = codes.CODE_ERR_UNKNOWN
 		res.Msg = err.Error()
-		c.JSON(http.StatusBadRequest, res)
+		c.JSON(http.StatusOK, res)
 		return
 	}
 
@@ -168,21 +168,21 @@ func CreateBatchWallet(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		res.Code = codes.CODE_ERR_REQFORMAT
 		res.Msg = "Invalid request"
-		c.JSON(http.StatusBadRequest, res)
+		c.JSON(http.StatusOK, res)
 		return
 	}
 
 	if len(req.ChainCodes) == 0 {
 		res.Code = codes.CODE_ERR_REQFORMAT
 		res.Msg = "chain list empty"
-		c.JSON(http.StatusBadRequest, res)
+		c.JSON(http.StatusOK, res)
 		return
 	}
 	validChains := wallet.CheckAllCodes(req.ChainCodes)
 	if len(validChains) == 0 {
 		res.Code = codes.CODE_ERR_BAT_PARAMS
 		res.Msg = "chain list all invalid"
-		c.JSON(http.StatusBadRequest, res)
+		c.JSON(http.StatusOK, res)
 		return
 	}
 
@@ -200,13 +200,13 @@ func CreateBatchWallet(c *gin.Context) {
 		if err != nil {
 			res.Code = codes.CODE_ERR_UNKNOWN
 			res.Msg = err.Error()
-			c.JSON(http.StatusBadRequest, res)
+			c.JSON(http.StatusOK, res)
 			return
 		}
 		if walletGroup == nil {
 			res.Code = codes.CODES_ERR_OBJ_NOT_FOUND
 			res.Msg = fmt.Sprintf("can not find by group id:%d", req.GroupID)
-			c.JSON(http.StatusBadRequest, res)
+			c.JSON(http.StatusOK, res)
 			return
 		}
 	} else {
@@ -215,7 +215,7 @@ func CreateBatchWallet(c *gin.Context) {
 			if err != nil {
 				res.Code = codes.CODE_ERR_UNKNOWN
 				res.Msg = fmt.Sprintf("can not create wallet group : %s", err.Error())
-				c.JSON(http.StatusBadRequest, res)
+				c.JSON(http.StatusOK, res)
 				return
 			}
 			walletGroup = &model.WalletGroup{
@@ -279,7 +279,7 @@ func CreateBatchWallet(c *gin.Context) {
 		if err != nil {
 			res.Code = codes.CODE_ERR_UNKNOWN
 			res.Msg = err.Error()
-			c.JSON(http.StatusBadRequest, res)
+			c.JSON(http.StatusOK, res)
 			return
 		}
 
@@ -330,14 +330,14 @@ func Sig(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		res.Code = codes.CODE_ERR_REQFORMAT
 		res.Msg = "Invalid request"
-		c.JSON(http.StatusBadRequest, res)
+		c.JSON(http.StatusOK, res)
 		return
 	}
 
 	if len(req.Message) == 0 || (req.Type != "transaction" && req.Type != "sign") {
 		res.Code = codes.CODE_ERR_BAT_PARAMS
 		res.Msg = "bad request parameters"
-		c.JSON(http.StatusBadRequest, res)
+		c.JSON(http.StatusOK, res)
 		return
 	}
 
@@ -347,15 +347,21 @@ func Sig(c *gin.Context) {
 	if wg.ID == 0 {
 		res.Code = codes.CODES_ERR_OBJ_NOT_FOUND
 		res.Msg = fmt.Sprintf("unable to find wallet object with %d", req.WalletID)
-		c.JSON(http.StatusBadRequest, res)
+		c.JSON(http.StatusOK, res)
 		return
 	}
 
 	log.Info("accept req: ", req.Message)
 
 	chainConfig := config.GetRpcConfig(wg.ChainCode)
-	txhash, sig, error := chain.HandleMessage(chainConfig, req.Message, req.To, req.Type, req.Amount, &req.Config, &wg)
+	txhash, sig, err := chain.HandleMessage(chainConfig, req.Message, req.To, req.Type, req.Amount, &req.Config, &wg)
 	sigStr := ""
+	if err != nil {
+		res.Code = codes.CODES_ERR_TX
+		res.Msg = err.Error()
+		c.JSON(http.StatusOK, res)
+		return
+	}
 	if len(sig) > 0 {
 		sigStr = base64.StdEncoding.EncodeToString(sig)
 	}
@@ -370,11 +376,11 @@ func Sig(c *gin.Context) {
 		OpTime:    time.Now(),
 		TxHash:    txhash,
 	}
-	if error != nil {
-		wl.Err = error.Error()
-	}
-	err := db.Model(&model.WalletLog{}).Save(wl).Error
 	if err != nil {
+		wl.Err = err.Error()
+	}
+	err1 := db.Model(&model.WalletLog{}).Save(wl).Error
+	if err1 != nil {
 		log.Error("save log error ", err)
 	}
 
@@ -389,7 +395,7 @@ func Sig(c *gin.Context) {
 		Signature: sigStr,
 		Wallet:    wg.Wallet,
 		Tx:        txhash,
-		Err:       error.Error(),
+		Err:       err.Error(),
 	}
 	c.JSON(http.StatusOK, res)
 }

@@ -33,14 +33,14 @@ func Transfer(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		res.Code = codes.CODE_ERR_REQFORMAT
 		res.Msg = "Invalid request"
-		c.JSON(http.StatusBadRequest, res)
+		c.JSON(http.StatusOK, res)
 		return
 	}
 
 	if len(req.To) == 0 {
 		res.Code = codes.CODE_ERR_BAT_PARAMS
 		res.Msg = "bad request parameters"
-		c.JSON(http.StatusBadRequest, res)
+		c.JSON(http.StatusOK, res)
 		return
 	}
 
@@ -50,7 +50,7 @@ func Transfer(c *gin.Context) {
 	if wg.ID == 0 {
 		res.Code = codes.CODES_ERR_OBJ_NOT_FOUND
 		res.Msg = fmt.Sprintf("unable to find wallet object with %d", req.WalletID)
-		c.JSON(http.StatusBadRequest, res)
+		c.JSON(http.StatusOK, res)
 		return
 	}
 
@@ -62,7 +62,7 @@ func Transfer(c *gin.Context) {
 		log.Error("transfer error:", req, err)
 		res.Code = codes.CODE_ERR_UNKNOWN
 		res.Msg = fmt.Sprintf("unknown error %s", err.Error())
-		c.JSON(http.StatusBadRequest, res)
+		c.JSON(http.StatusOK, res)
 		return
 	}
 
