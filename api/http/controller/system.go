@@ -384,10 +384,12 @@ func Sig(c *gin.Context) {
 		Signature string `json:"signature"`
 		Wallet    string `json:"wallet"`
 		Tx        string `json:"tx"`
+		Err       string `json:"err"`
 	}{
 		Signature: sigStr,
 		Wallet:    wg.Wallet,
 		Tx:        txhash,
+		Err:       error.Error(),
 	}
 	c.JSON(http.StatusOK, res)
 }
