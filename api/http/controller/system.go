@@ -356,12 +356,7 @@ func Sig(c *gin.Context) {
 	chainConfig := config.GetRpcConfig(wg.ChainCode)
 	txhash, sig, err := chain.HandleMessage(chainConfig, req.Message, req.To, req.Type, req.Amount, &req.Config, &wg)
 	sigStr := ""
-	if err != nil {
-		res.Code = codes.CODES_ERR_TX
-		res.Msg = err.Error()
-		c.JSON(http.StatusOK, res)
-		return
-	}
+
 	if len(sig) > 0 {
 		sigStr = base64.StdEncoding.EncodeToString(sig)
 	}
@@ -376,6 +371,7 @@ func Sig(c *gin.Context) {
 		OpTime:    time.Now(),
 		TxHash:    txhash,
 	}
+
 	if err != nil {
 		wl.Err = err.Error()
 	}
@@ -384,18 +380,23 @@ func Sig(c *gin.Context) {
 		log.Error("save log error ", err)
 	}
 
+	if err != nil {
+		res.Code = codes.CODES_ERR_TX
+		res.Msg = err.Error()
+		c.JSON(http.StatusOK, res)
+		return
+	}
+
 	res.Code = codes.CODE_SUCCESS
 	res.Msg = "success"
 	res.Data = struct {
 		Signature string `json:"signature"`
 		Wallet    string `json:"wallet"`
 		Tx        string `json:"tx"`
-		Err       string `json:"err"`
 	}{
 		Signature: sigStr,
 		Wallet:    wg.Wallet,
 		Tx:        txhash,
-		Err:       err.Error(),
 	}
 	c.JSON(http.StatusOK, res)
 }
