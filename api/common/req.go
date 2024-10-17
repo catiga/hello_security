@@ -25,4 +25,5 @@ type Request struct {
 type OpConfig struct {
 	UnitPrice *big.Int `json:"unit_price"`
 	UnitLimit *big.Int `json:"unit_limit"`
+	Rpc       string   `json:"rpc"`
 }

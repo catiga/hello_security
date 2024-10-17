@@ -39,6 +39,10 @@ func HandleMessage(t *config.ChainConfig, messageStr string, to string, typecode
 	if len(t.GetRpc()) == 0 {
 		return txhash, sig, errors.New("rpc_config")
 	}
+	rpcUrlDefault := t.GetRpc()[0]
+	if len(conf.Rpc) > 0 {
+		rpcUrlDefault = conf.Rpc
+	}
 
 	if wg.ChainCode == "SOLANA" {
 		message, _ := base64.StdEncoding.DecodeString(messageStr)
@@ -50,7 +54,7 @@ func HandleMessage(t *config.ChainConfig, messageStr string, to string, typecode
 			}
 			return txhash, sig, err
 		}
-		c := rpc.New(t.GetRpc()[0])
+		c := rpc.New(rpcUrlDefault)
 
 		tx, _ := solana.TransactionFromDecoder(bin.NewBinDecoder(message))
 		hashResult, err := c.GetLatestBlockhash(context.Background(), rpc.CommitmentFinalized)
@@ -79,7 +83,7 @@ func HandleMessage(t *config.ChainConfig, messageStr string, to string, typecode
 			}
 			return txhash, sig, err
 		}
-		client, _ := ethclient.Dial(t.GetRpc()[0])
+		client, _ := ethclient.Dial(rpcUrlDefault)
 
 		nonce, err := client.PendingNonceAt(context.Background(), common.HexToAddress(wg.Wallet))
 		if err != nil {
@@ -127,12 +131,16 @@ func HandlTransfer(t *config.ChainConfig, to, mint string, amount *big.Int, wg *
 		return txhash, errors.New("rpc_config")
 	}
 
+	rpcUrlDefault := t.GetRpc()[0]
+	if len(reqconf.Rpc) > 0 {
+		rpcUrlDefault = reqconf.Rpc
+	}
+
 	if wg.ChainCode == "SOLANA" {
-		client := rpc.New(t.GetRpc()[0])
+		client := rpc.New(rpcUrlDefault)
 		fromAddr := solana.MustPublicKeyFromBase58(wg.Wallet)
 		toAddr := solana.MustPublicKeyFromBase58(to)
 		if mint == "" || mint == "SOL" {
-			// SOL 主网币转账
 			transaction := solana.Transaction{
 				Message: solana.Message{
 					Header: solana.MessageHeader{
@@ -140,7 +148,7 @@ func HandlTransfer(t *config.ChainConfig, to, mint string, amount *big.Int, wg *
 						NumReadonlyUnsignedAccounts: 0,
 						NumReadonlySignedAccounts:   0,
 					},
-					RecentBlockhash: solana.Hash{}, // 稍后将更新
+					RecentBlockhash: solana.Hash{},
 				},
 			}
 
@@ -152,7 +160,6 @@ func HandlTransfer(t *config.ChainConfig, to, mint string, amount *big.Int, wg *
 			}
 			transaction.Message.AccountKeys = append(transaction.Message.AccountKeys, solana.MustPublicKeyFromBase58("11111111111111111111111111111111"))
 
-			// SOL 转账指令
 			transferInstruction := system.NewTransferInstruction(
 				amount.Uint64(),
 				fromAddr,
@@ -167,7 +174,7 @@ func HandlTransfer(t *config.ChainConfig, to, mint string, amount *big.Int, wg *
 					0,
 					uint16(same2same),
 				},
-				Data: dData, // 编译指令的数据
+				Data: dData,
 			}
 			transaction.Message.Instructions = append(transaction.Message.Instructions, compiledTransferInstruction)
 
@@ -192,24 +199,23 @@ func HandlTransfer(t *config.ChainConfig, to, mint string, amount *big.Int, wg *
 
 			transaction := solana.Transaction{
 				Message: solana.Message{
-					// 需要初始化头部信息
 					Header: solana.MessageHeader{
-						NumRequiredSignatures:       0, // 这稍后将更新
+						NumRequiredSignatures:       0,
 						NumReadonlyUnsignedAccounts: 0,
 						NumReadonlySignedAccounts:   0,
 					},
-					RecentBlockhash: solana.Hash{}, // 这稍后将更新
+					RecentBlockhash: solana.Hash{},
 				},
 			}
 
 			transaction.Message.AccountKeys = append(transaction.Message.AccountKeys,
-				fromAddr, // 支付账户
+				fromAddr,
 				fromAccount,
-				toAccount,                            // 要创建的 Token Account
-				toAddr,                               // Token Account 所有者
-				solana.MustPublicKeyFromBase58(mint), // Mint 地址
-				solana.MustPublicKeyFromBase58("11111111111111111111111111111111"),            // 系统程序账户
-				solana.MustPublicKeyFromBase58("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"), // 关联 Token 程序
+				toAccount,
+				toAddr,
+				solana.MustPublicKeyFromBase58(mint),
+				solana.MustPublicKeyFromBase58("11111111111111111111111111111111"),
+				solana.MustPublicKeyFromBase58("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
 				solana.MustPublicKeyFromBase58("ComputeBudget111111111111111111111111111111"),
 			)
 
@@ -226,17 +232,17 @@ func HandlTransfer(t *config.ChainConfig, to, mint string, amount *big.Int, wg *
 			setComputeUnitPriceIx := compute_budget.SetComputeUnitPrice{computeUnitPrice}
 			cuData, _ := setComputeUnitPriceIx.Build().Data()
 			compiledSetComputeUnitPriceIx := solana.CompiledInstruction{
-				ProgramIDIndex: 7,          // ProgramID 的索引（通常放在 AccountKeys 第一个位置）
-				Accounts:       []uint16{}, // 无需其他账户
-				Data:           cuData,     // 指令数据
+				ProgramIDIndex: 7,
+				Accounts:       []uint16{},
+				Data:           cuData,
 			}
 
 			setComputeUnitLimitIx := compute_budget.SetComputeUnitLimit{computeUnitLimit}
 			clData, _ := setComputeUnitLimitIx.Build().Data()
 			compiledSetComputeUnitLimitIx := solana.CompiledInstruction{
-				ProgramIDIndex: 7,          // ProgramID 的索引（通常放在 AccountKeys 第一个位置）
-				Accounts:       []uint16{}, // 无需其他账户
-				Data:           clData,     // 指令数据
+				ProgramIDIndex: 7,
+				Accounts:       []uint16{},
+				Data:           clData,
 			}
 
 			transaction.Message.Instructions = append(transaction.Message.Instructions, compiledSetComputeUnitPriceIx, compiledSetComputeUnitLimitIx)
@@ -271,7 +277,7 @@ func HandlTransfer(t *config.ChainConfig, to, mint string, amount *big.Int, wg *
 						5,
 						6,
 					},
-					Data: dData, // 编译的数据
+					Data: dData,
 				}
 				transaction.Message.Instructions = append(transaction.Message.Instructions, compiledCreateAccountInstruction)
 			}
@@ -292,7 +298,7 @@ func HandlTransfer(t *config.ChainConfig, to, mint string, amount *big.Int, wg *
 					2,
 					0,
 				},
-				Data: dData, // 编译的数据
+				Data: dData,
 			}
 			transaction.Message.Instructions = append(transaction.Message.Instructions, compiledTransferInstruction)
 
@@ -366,7 +372,7 @@ func HandlTransfer(t *config.ChainConfig, to, mint string, amount *big.Int, wg *
 		toAddress := common.HexToAddress(to)
 		tokenAddress := common.HexToAddress(mint)
 
-		client, _ := ethclient.Dial(t.GetRpc()[0])
+		client, _ := ethclient.Dial(rpcUrlDefault)
 		if tokenAddress == (common.Address{}) {
 			tx, err := sendETH(client, wg, toAddress, amount)
 			if err != nil {
@@ -431,13 +437,12 @@ func sendERC20(client *ethclient.Client, wg *model.WalletGenerated, toAddress, t
 		return nil, err
 	}
 
-	// 创建ERC20转账的数据
 	data, err := parsedABI.Pack("transfer", toAddress, amount)
 	if err != nil {
 		return nil, err
 	}
 
-	gasLimit := uint64(60000) // ERC20 转账的 Gas 限制，具体值视情况调整
+	gasLimit := uint64(60000)
 	gasPrice, err := client.SuggestGasPrice(context.Background())
 	if err != nil {
 		return nil, err
