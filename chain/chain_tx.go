@@ -43,6 +43,7 @@ func HandleMessage(t *config.ChainConfig, messageStr string, to string, typecode
 	if len(conf.Rpc) > 0 {
 		rpcUrlDefault = conf.Rpc
 	}
+	log.Infof("RPC for transaction current used: %s", rpcUrlDefault)
 
 	if wg.ChainCode == "SOLANA" {
 		message, _ := base64.StdEncoding.DecodeString(messageStr)
@@ -56,9 +57,13 @@ func HandleMessage(t *config.ChainConfig, messageStr string, to string, typecode
 		}
 		c := rpc.New(rpcUrlDefault)
 
-		tx, _ := solana.TransactionFromDecoder(bin.NewBinDecoder(message))
-		hashResult, err := c.GetLatestBlockhash(context.Background(), rpc.CommitmentFinalized)
+		tx, err := solana.TransactionFromDecoder(bin.NewBinDecoder(message))
 		if err != nil {
+			return txhash, sig, err
+		}
+		hashResult, err := c.GetLatestBlockhash(context.Background(), "")
+		if err != nil {
+			log.Error("Get block hash error: ", err)
 			return txhash, sig, err
 		}
 		tx.Message.RecentBlockhash = hashResult.Value.Blockhash
@@ -135,6 +140,7 @@ func HandlTransfer(t *config.ChainConfig, to, mint string, amount *big.Int, wg *
 	if len(reqconf.Rpc) > 0 {
 		rpcUrlDefault = reqconf.Rpc
 	}
+	log.Infof("RPC for transfer current used: %s", rpcUrlDefault)
 
 	if wg.ChainCode == "SOLANA" {
 		client := rpc.New(rpcUrlDefault)
@@ -178,7 +184,11 @@ func HandlTransfer(t *config.ChainConfig, to, mint string, amount *big.Int, wg *
 			}
 			transaction.Message.Instructions = append(transaction.Message.Instructions, compiledTransferInstruction)
 
-			outHash, _ := client.GetLatestBlockhash(context.Background(), rpc.CommitmentFinalized)
+			outHash, err := client.GetLatestBlockhash(context.Background(), "")
+			if err != nil {
+				log.Error("Get block hash error: ", err)
+				return txhash, err
+			}
 			transaction.Message.RecentBlockhash = outHash.Value.Blockhash
 
 			messageHash, _ := transaction.Message.MarshalBinary()
