@@ -68,11 +68,19 @@ func HandleMessage(t *config.ChainConfig, messageStr string, to string, typecode
 		}
 		tx.Message.RecentBlockhash = hashResult.Value.Blockhash
 
-		sig, err = enc.Porter().SigSol(wg, message)
+		msgBytes, _ := tx.Message.MarshalBinary()
+		sig, err = enc.Porter().SigSol(wg, msgBytes)
 		if err != nil {
 			return txhash, sig, err
 		}
+		log.Info("Signed result sig: ", base64.StdEncoding.EncodeToString(sig))
 		tx.Signatures = []solana.Signature{solana.Signature(sig)}
+
+		txbyte, _ := tx.MarshalBinary()
+
+		txBase64 := base64.StdEncoding.EncodeToString(txbyte)
+		log.Info("Signed full tx: ", txBase64)
+
 		txhash, err := c.SendTransaction(context.Background(), tx)
 
 		return base58.Encode(txhash[:]), sig, err
